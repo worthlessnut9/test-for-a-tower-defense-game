@@ -170,5 +170,8 @@ export function availableTowers(level, towers, save, game) {
   const a = pick(teamIds(towers, save, game));
   if (a.length) return a;
   const b = pick(owned).slice(0, game.teamSlots); // team has nothing this level allows: pick for them
-  return b.length ? b : allowed.filter((id) => towers.some((t) => t.id === id));
+  if (b.length) return b;
+  // the level allows none of the towers the player owns: they still only get towers they own, never ones they have not bought
+  if (owned.length) return owned.slice(0, game.teamSlots);
+  return allowed.filter((id) => towers.some((t) => t.id === id));
 }

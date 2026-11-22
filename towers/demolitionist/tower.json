@@ -5,7 +5,7 @@
   "shape": "square",
   "color": "#b8742f",
   "cost": 100,
-  "price": 0,
+  "price": 120,
   "targeting": "first",
   "blurb": "Throws explosives. Splash damage, and extra damage against armored zombies.",
   "attack": {

@@ -352,6 +352,7 @@ export class GameScene extends Phaser.Scene {
       r.desc.setText(s.desc);
       const dim = s.st === 'paths' || s.st === 'secondary' || s.st === 'locked' || s.st === 'max';
       r.b.setEnabled(s.st === 'ok' && !this.ended);
+      r.b.bg.setStrokeStyle(3, s.st === 'locked' ? 0xe57373 : 0x66bb6a); // red outline until the upgrade is bought, green once it is
       r.sub.setAlpha(dim ? 0.55 : 1);
       r.desc.setAlpha(dim ? 0.7 : 1);
       r.cost.setColor(s.st === 'money' ? '#ef9a9a' : s.st === 'locked' || s.st === 'max' ? '#90a4ae' : '#ffd54f');
@@ -371,13 +372,6 @@ export class GameScene extends Phaser.Scene {
       const path = (t.def.paths || [])[pi];
       if (!path) return;
       const s = this.pathRowState(t, pi);
-      if (s.st === 'locked') {
-        // big red X over the upgrade the player has not bought yet
-        const bx = r.b.x, by = r.y, bw = r.b.w;
-        ug.lineStyle(4, 0xe57373, 0.5);
-        ug.lineBetween(bx + 6, by + 6, bx + bw - 6, by + 110);
-        ug.lineBetween(bx + 6, by + 110, bx + bw - 6, by + 6);
-      }
       const locked = s.st === 'paths' || s.st === 'secondary' || s.st === 'locked';
       const n = path.tiers.length;
       for (let i = 0; i < n; i++) {
@@ -387,12 +381,9 @@ export class GameScene extends Phaser.Scene {
         const y = r.y + 100;
         ug.fillStyle(PATH_COLORS[pi], owned ? 1 : !open ? 0.1 : locked ? 0.15 : 0.35);
         ug.fillRect(x, y, 16, 8);
-        if (!owned && !open) {
-          // red X over a tier that has not been bought on the Team screen
-          ug.lineStyle(2, 0xe57373, 0.95);
-          ug.lineBetween(x, y, x + 16, y + 8);
-          ug.lineBetween(x, y + 8, x + 16, y);
-        }
+        // outline: green once the tier is bought on the Team screen, red until then
+        ug.lineStyle(2, open ? 0x66bb6a : 0xe57373, 0.95);
+        ug.strokeRect(x, y, 16, 8);
         if (!owned && i === t.tiers[pi] && s.st === 'ok') {
           ug.lineStyle(2, 0xffffff, 0.9);
           ug.strokeRect(x, y, 16, 8);

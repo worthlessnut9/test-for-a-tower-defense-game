@@ -225,8 +225,8 @@ export class TeamScene extends Phaser.Scene {
         const price = tierPrice(tier);
         const afford = this.coins >= price;
         const live = have && st === 'buy';
-        const edge = st === 'owned' ? 0x66bb6a : live ? (afford ? 0xffd54f : 0x8d6e63) : 0x2f3948;
-        const bg = keep(this.add.rectangle(x + colW / 2, y + boxH / 2, colW, boxH, st === 'owned' ? 0x1c2a22 : 0x1b212b).setStrokeStyle(2, edge));
+        const edge = st === 'owned' ? 0x66bb6a : 0xe57373; // green outline once bought, red until then
+        const bg = keep(this.add.rectangle(x + colW / 2, y + boxH / 2, colW, boxH, st === 'owned' ? 0x1c2a22 : 0x1b212b).setStrokeStyle(3, edge));
         bg.setInteractive({ useHandCursor: live && afford });
         bg.on('pointerdown', () => this.buyTierNow(d, pi, ti));
         bg.on('pointerover', () => {
@@ -244,12 +244,6 @@ export class TeamScene extends Phaser.Scene {
         const label = st === 'owned' ? '✔ Bought' : price === 0 ? 'Free' : '●' + price;
         const col = st === 'owned' ? '#81c784' : live ? (afford ? '#ffd54f' : '#ef9a9a') : '#6f7d92';
         keep(this.add.text(x + 14, y + boxH - 20, label, { fontFamily: FONT, fontSize: '13px', fontStyle: 'bold', color: col }));
-        if (st !== 'owned') {
-          // a red X over every upgrade that has not been bought yet (clicks pass straight through it to the box underneath)
-          const xa = x + 4, xb = x + colW - 4, ya = y + 4, yb = y + boxH - 4;
-          keep(this.add.line(0, 0, xa, ya, xb, yb, 0xe57373, 0.5).setOrigin(0, 0).setLineWidth(3));
-          keep(this.add.line(0, 0, xa, yb, xb, ya, 0xe57373, 0.5).setOrigin(0, 0).setLineWidth(3));
-        }
       });
     });
   }

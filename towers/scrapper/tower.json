@@ -1,0 +1,133 @@
+{
+  "id": "scrapper",
+  "name": "Scrapper",
+  "look": "scrapper",
+  "shape": "square",
+  "color": "#8b7355",
+  "cost": 90,
+  "price": 150,
+  "targeting": "first",
+  "blurb": "Earns money while a wave is on, and collects a bounty on kills nearby. Does not shoot.",
+  "attack": {
+    "type": "income",
+    "damage": 0,
+    "range": 1.8,
+    "cooldown": 5,
+    "income": 8,
+    "hitsAir": true,
+    "hitsGround": true
+  },
+  "paths": [
+    {
+      "name": "Salvage",
+      "tiers": [
+        {
+          "name": "Scrap Pile",
+          "cost": 50,
+          "price": 40,
+          "income": 5
+        },
+        {
+          "name": "Sorted Scrap",
+          "cost": 85,
+          "price": 65,
+          "income": 8
+        },
+        {
+          "name": "Metal Press",
+          "cost": 155,
+          "price": 115,
+          "income": 14
+        },
+        {
+          "name": "Scrap Foundry",
+          "cost": 315,
+          "price": 235,
+          "income": 30
+        },
+        {
+          "name": "Scrap Empire",
+          "cost": 630,
+          "price": 475,
+          "income": 70
+        }
+      ]
+    },
+    {
+      "name": "Logistics",
+      "tiers": [
+        {
+          "name": "Handcart",
+          "cost": 45,
+          "price": 35,
+          "cooldown": 0.85
+        },
+        {
+          "name": "Forklift",
+          "cost": 75,
+          "price": 55,
+          "cooldown": 0.8
+        },
+        {
+          "name": "Conveyor Belt",
+          "cost": 140,
+          "price": 105,
+          "cooldown": 0.75
+        },
+        {
+          "name": "Rail Line",
+          "cost": 285,
+          "price": 215,
+          "cooldown": 0.7
+        },
+        {
+          "name": "Supply Chain",
+          "cost": 565,
+          "price": 425,
+          "cooldown": 0.6,
+          "income": 15
+        }
+      ]
+    },
+    {
+      "name": "Scavenging",
+      "tiers": [
+        {
+          "name": "Looting",
+          "cost": 55,
+          "price": 40,
+          "bounty": 1,
+          "range": 0.4
+        },
+        {
+          "name": "Corpse Pickers",
+          "cost": 90,
+          "price": 70,
+          "bounty": 1,
+          "range": 0.4
+        },
+        {
+          "name": "Dog Tags",
+          "cost": 170,
+          "price": 130,
+          "bounty": 2,
+          "range": 0.5
+        },
+        {
+          "name": "Black Market",
+          "cost": 345,
+          "price": 260,
+          "bounty": 3,
+          "range": 0.6
+        },
+        {
+          "name": "War Profiteer",
+          "cost": 695,
+          "price": 520,
+          "bounty": 6,
+          "range": 0.8
+        }
+      ]
+    }
+  ]
+}

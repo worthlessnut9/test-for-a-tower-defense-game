@@ -1,0 +1,143 @@
+{
+  "id": "toxicologist",
+  "name": "Toxicologist",
+  "look": "toxicologist",
+  "shape": "hexagon",
+  "color": "#a7c33a",
+  "cost": 80,
+  "price": 160,
+  "targeting": "first",
+  "blurb": "Slow flasks of poison. The longer a zombie stays poisoned, the harder the poison hits.",
+  "attack": {
+    "type": "projectile",
+    "damage": 2,
+    "range": 2.4,
+    "cooldown": 2.4,
+    "projectileSpeed": 6,
+    "splashRadius": 0.7,
+    "poisonDps": 3,
+    "poisonRamp": 2.5,
+    "poisonDuration": 4,
+    "shot": "flask",
+    "hitsAir": false,
+    "hitsGround": true
+  },
+  "paths": [
+    {
+      "name": "Toxins",
+      "tiers": [
+        {
+          "name": "Stronger Mix",
+          "cost": 55,
+          "price": 40,
+          "poisonDps": 2
+        },
+        {
+          "name": "Neurotoxin",
+          "cost": 95,
+          "price": 70,
+          "poisonRamp": 2
+        },
+        {
+          "name": "Virulent Strain",
+          "cost": 175,
+          "price": 130,
+          "poisonDps": 4,
+          "poisonRamp": 2,
+          "poisonDuration": 6
+        },
+        {
+          "name": "Necrotic Toxin",
+          "cost": 360,
+          "price": 270,
+          "poisonDps": 4,
+          "poisonRamp": 6
+        },
+        {
+          "name": "Black Death",
+          "cost": 720,
+          "price": 540,
+          "poisonDps": 12,
+          "poisonRamp": 10,
+          "poisonDuration": 9
+        }
+      ]
+    },
+    {
+      "name": "Delivery",
+      "tiers": [
+        {
+          "name": "Wide Flasks",
+          "cost": 50,
+          "price": 40,
+          "splashRadius": 0.3
+        },
+        {
+          "name": "Quick Brew",
+          "cost": 85,
+          "price": 65,
+          "cooldown": 0.85
+        },
+        {
+          "name": "Long Throw",
+          "cost": 160,
+          "price": 120,
+          "range": 0.6
+        },
+        {
+          "name": "Double Flask",
+          "cost": 325,
+          "price": 245,
+          "shots": 1
+        },
+        {
+          "name": "Rapid Lab",
+          "cost": 650,
+          "price": 490,
+          "cooldown": 0.7,
+          "shots": 1
+        }
+      ]
+    },
+    {
+      "name": "Contagion",
+      "tiers": [
+        {
+          "name": "Lingering Cloud",
+          "cost": 60,
+          "price": 45,
+          "poisonDuration": 6
+        },
+        {
+          "name": "Sticky Residue",
+          "cost": 105,
+          "price": 80,
+          "slowTo": 0.8,
+          "slowDuration": 2
+        },
+        {
+          "name": "Infection",
+          "cost": 195,
+          "price": 145,
+          "poisonSpread": 0.9
+        },
+        {
+          "name": "Epidemic",
+          "cost": 395,
+          "price": 295,
+          "poisonSpread": 0.7,
+          "splashRadius": 0.2
+        },
+        {
+          "name": "Pandemic",
+          "cost": 790,
+          "price": 595,
+          "poisonSpread": 1.2,
+          "poisonDuration": 10,
+          "slowTo": 0.6,
+          "slowDuration": 3
+        }
+      ]
+    }
+  ]
+}

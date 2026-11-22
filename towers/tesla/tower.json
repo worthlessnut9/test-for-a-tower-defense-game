@@ -1,0 +1,141 @@
+{
+  "id": "tesla",
+  "name": "Tesla Coil",
+  "look": "tesla",
+  "shape": "hexagon",
+  "color": "#4fa3d9",
+  "cost": 150,
+  "price": 350,
+  "targeting": "first",
+  "blurb": "Shocks a zombie for medium damage, then the shock chains to zombies near it.",
+  "attack": {
+    "type": "arc",
+    "damage": 14,
+    "range": 2.3,
+    "cooldown": 1.1,
+    "chain": 2,
+    "chainRange": 1.3,
+    "chainFalloff": 0.8,
+    "hitsAir": true,
+    "hitsGround": true
+  },
+  "paths": [
+    {
+      "name": "Voltage",
+      "tiers": [
+        {
+          "name": "Higher Voltage",
+          "cost": 105,
+          "price": 80,
+          "damage": 8
+        },
+        {
+          "name": "Capacitor Bank",
+          "cost": 180,
+          "price": 135,
+          "damage": 10
+        },
+        {
+          "name": "Overcharge",
+          "cost": 330,
+          "price": 250,
+          "damage": 16,
+          "armorPierce": 0.3
+        },
+        {
+          "name": "Storm Surge",
+          "cost": 675,
+          "price": 505,
+          "damage": 30
+        },
+        {
+          "name": "Wrath of Tesla",
+          "cost": 1350,
+          "price": 1015,
+          "damage": 75,
+          "armorPierce": 0.4
+        }
+      ]
+    },
+    {
+      "name": "Conductors",
+      "tiers": [
+        {
+          "name": "Copper Wiring",
+          "cost": 95,
+          "price": 70,
+          "chain": 1
+        },
+        {
+          "name": "Grounding Rods",
+          "cost": 160,
+          "price": 120,
+          "chainRange": 0.5
+        },
+        {
+          "name": "Daisy Chain",
+          "cost": 295,
+          "price": 220,
+          "chain": 2,
+          "chainFalloff": 0.05
+        },
+        {
+          "name": "Faraday Network",
+          "cost": 610,
+          "price": 460,
+          "chain": 3,
+          "chainRange": 0.5,
+          "chainFalloff": 0.07
+        },
+        {
+          "name": "Storm Web",
+          "cost": 1215,
+          "price": 910,
+          "chain": 5,
+          "chainRange": 0.7,
+          "chainFalloff": 0.08
+        }
+      ]
+    },
+    {
+      "name": "Dynamo",
+      "tiers": [
+        {
+          "name": "Quick Charge",
+          "cost": 115,
+          "price": 85,
+          "cooldown": 0.85
+        },
+        {
+          "name": "Shock Stagger",
+          "cost": 200,
+          "price": 150,
+          "slowTo": 0.5,
+          "slowDuration": 0.6
+        },
+        {
+          "name": "Twin Coils",
+          "cost": 365,
+          "price": 275,
+          "shots": 1
+        },
+        {
+          "name": "Static Field",
+          "cost": 745,
+          "price": 560,
+          "cooldown": 0.75,
+          "range": 0.4
+        },
+        {
+          "name": "Arc Reactor",
+          "cost": 1485,
+          "price": 1115,
+          "cooldown": 0.6,
+          "slowTo": 0.25,
+          "slowDuration": 0.8,
+          "shots": 1
+        }
+      ]
+    }
+  ]
+}

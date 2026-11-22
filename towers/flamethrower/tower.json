@@ -1,0 +1,135 @@
+{
+  "id": "flamethrower",
+  "name": "Flamethrower",
+  "look": "flamethrower",
+  "shape": "diamond",
+  "color": "#c0521e",
+  "cost": 130,
+  "price": 200,
+  "targeting": "first",
+  "blurb": "Very short range, high damage, and sets zombies on fire.",
+  "attack": {
+    "type": "beam",
+    "damage": 34,
+    "range": 1.4,
+    "burnDps": 8,
+    "burnDuration": 3,
+    "hitsAir": false,
+    "hitsGround": true
+  },
+  "paths": [
+    {
+      "name": "Fuel",
+      "tiers": [
+        {
+          "name": "Napalm",
+          "cost": 90,
+          "price": 70,
+          "damage": 14
+        },
+        {
+          "name": "Pressurized Tank",
+          "cost": 155,
+          "price": 115,
+          "damage": 10,
+          "range": 0.2
+        },
+        {
+          "name": "Thermite",
+          "cost": 285,
+          "price": 215,
+          "damage": 22,
+          "armorPierce": 0.5
+        },
+        {
+          "name": "Inferno Tank",
+          "cost": 585,
+          "price": 440,
+          "damage": 40
+        },
+        {
+          "name": "Dragon's Breath",
+          "cost": 1170,
+          "price": 880,
+          "damage": 90,
+          "range": 0.3,
+          "armorPierce": 0.3
+        }
+      ]
+    },
+    {
+      "name": "Burn",
+      "tiers": [
+        {
+          "name": "Sticky Fuel",
+          "cost": 80,
+          "price": 60,
+          "burnDps": 6
+        },
+        {
+          "name": "Lingering Flames",
+          "cost": 140,
+          "price": 105,
+          "burnDps": 6,
+          "burnDuration": 5
+        },
+        {
+          "name": "Ignition",
+          "cost": 255,
+          "price": 190,
+          "burnDps": 12
+        },
+        {
+          "name": "Scorched Earth",
+          "cost": 525,
+          "price": 395,
+          "burnDps": 24
+        },
+        {
+          "name": "Hellfire",
+          "cost": 1055,
+          "price": 790,
+          "burnDps": 55,
+          "burnDuration": 7
+        }
+      ]
+    },
+    {
+      "name": "Nozzles",
+      "tiers": [
+        {
+          "name": "Long Nozzle",
+          "cost": 100,
+          "price": 75,
+          "range": 0.3
+        },
+        {
+          "name": "Twin Jets",
+          "cost": 170,
+          "price": 130,
+          "shots": 1
+        },
+        {
+          "name": "Pressure Pump",
+          "cost": 315,
+          "price": 235,
+          "range": 0.3,
+          "damage": 10
+        },
+        {
+          "name": "Triple Jets",
+          "cost": 645,
+          "price": 485,
+          "shots": 1
+        },
+        {
+          "name": "Flame Wall",
+          "cost": 1285,
+          "price": 965,
+          "shots": 2,
+          "range": 0.4
+        }
+      ]
+    }
+  ]
+}

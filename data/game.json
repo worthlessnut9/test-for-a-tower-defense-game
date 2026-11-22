@@ -1,0 +1,8 @@
+{
+  "teamSlots": 4,
+  "startCoins": 0,
+  "repeatRewardPct": 25,
+  "endlessCoinsPerWave": 5,
+  "endlessHpGrowth": 0.35,
+  "endlessCountGrowth": 0.25
+}

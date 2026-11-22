@@ -1,0 +1,12 @@
+{
+  "towers": [
+    "marksman",
+    "sniper",
+    "demolitionist",
+    "flamethrower",
+    "toxicologist",
+    "minigunner",
+    "scrapper",
+    "tesla"
+  ]
+}

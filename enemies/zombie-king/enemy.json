@@ -1,0 +1,125 @@
+{
+  "id": "zombie-king",
+  "name": "Zombie King",
+  "look": "king",
+  "shape": "star",
+  "color": "#9a9a6a",
+  "clothes": "#5a2a5a",
+  "detail": "#8f1c1c",
+  "size": 0.4,
+  "health": 160,
+  "speed": 0.9,
+  "reward": 40,
+  "score": 60,
+  "damage": 4,
+  "spawnOnDeath": [
+    {
+      "enemy": "walker",
+      "count": 3
+    },
+    {
+      "enemy": "crawler",
+      "count": 3
+    },
+    {
+      "enemy": "runner",
+      "count": 2
+    }
+  ],
+  "scaling": {
+    "health": 0.14
+  },
+  "variants": {
+    "muddy": {
+      "clothes": "#634448",
+      "detail": "#82241b",
+      "extras": [
+        "mud"
+      ],
+      "outfit": ""
+    },
+    "mossy": {
+      "clothes": "#514d48",
+      "detail": "#8c2424",
+      "extras": [
+        "moss"
+      ],
+      "outfit": ""
+    },
+    "dusty": {
+      "clothes": "#7d5f5a",
+      "detail": "#8c2e1b",
+      "extras": [
+        "dust"
+      ],
+      "outfit": ""
+    },
+    "leafy": {
+      "clothes": "#744440",
+      "detail": "#8c241b",
+      "extras": [
+        "leaves"
+      ],
+      "outfit": ""
+    },
+    "sooty": {
+      "clothes": "#48344d",
+      "detail": "#9e331b",
+      "extras": [
+        "soot"
+      ],
+      "outfit": ""
+    },
+    "snowy": {
+      "clothes": "#6c6489",
+      "detail": "#8c2e38",
+      "extras": [
+        "snow"
+      ],
+      "outfit": ""
+    },
+    "frozen": {
+      "clothes": "#63678e",
+      "detail": "#6f5e75",
+      "extras": [
+        "frost",
+        "snow"
+      ],
+      "outfit": ""
+    },
+    "bloody": {
+      "clothes": "#5a3c4c",
+      "detail": "#b02323",
+      "extras": [
+        "blood"
+      ],
+      "outfit": ""
+    },
+    "toxic": {
+      "clothes": "#635640",
+      "detail": "#79681b",
+      "extras": [
+        "toxic"
+      ],
+      "outfit": ""
+    },
+    "infested": {
+      "clothes": "#51335a",
+      "detail": "#822e6b",
+      "extras": [
+        "fungus",
+        "blood"
+      ],
+      "outfit": ""
+    },
+    "fleshy": {
+      "clothes": "#632a48",
+      "detail": "#992438",
+      "extras": [
+        "flesh",
+        "blood"
+      ],
+      "outfit": ""
+    }
+  }
+}

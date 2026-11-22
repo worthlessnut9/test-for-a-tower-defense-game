@@ -1,0 +1,13 @@
+{
+  "enemies": [
+    "crawler",
+    "walker",
+    "runner",
+    "brute",
+    "armored-walker",
+    "zombie-king",
+    "screamer",
+    "leaper",
+    "necromancer"
+  ]
+}

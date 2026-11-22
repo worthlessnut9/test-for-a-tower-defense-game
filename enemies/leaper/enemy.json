@@ -1,0 +1,107 @@
+{
+  "id": "leaper",
+  "name": "Leaper",
+  "look": "leaper",
+  "shape": "triangle",
+  "color": "#a8c07a",
+  "clothes": "#3a5a4a",
+  "detail": "#a3242b",
+  "size": 0.28,
+  "health": 28,
+  "speed": 1.4,
+  "reward": 10,
+  "score": 18,
+  "damage": 1,
+  "leap": {
+    "range": 2,
+    "cooldown": 3,
+    "time": 0.5,
+    "minGain": 1
+  },
+  "variants": {
+    "muddy": {
+      "clothes": "#545a41",
+      "detail": "#8a2821",
+      "extras": [
+        "mud"
+      ]
+    },
+    "mossy": {
+      "clothes": "#436341",
+      "detail": "#94282a",
+      "extras": [
+        "moss"
+      ],
+      "outfit": "beanie",
+      "gear": "#6a7a3a"
+    },
+    "dusty": {
+      "clothes": "#6f7453",
+      "detail": "#943121",
+      "extras": [
+        "dust"
+      ],
+      "outfit": "beanie",
+      "gear": "#c8aa6a"
+    },
+    "leafy": {
+      "clothes": "#665a38",
+      "detail": "#942821",
+      "extras": [
+        "leaves"
+      ]
+    },
+    "sooty": {
+      "clothes": "#3a4a46",
+      "detail": "#a63621",
+      "extras": [
+        "soot"
+      ]
+    },
+    "snowy": {
+      "clothes": "#5d7982",
+      "detail": "#94313e",
+      "extras": [
+        "snow"
+      ]
+    },
+    "frozen": {
+      "clothes": "#547c87",
+      "detail": "#77617b",
+      "extras": [
+        "frost",
+        "snow"
+      ]
+    },
+    "bloody": {
+      "clothes": "#4c5145",
+      "detail": "#b82629",
+      "extras": [
+        "blood"
+      ]
+    },
+    "toxic": {
+      "clothes": "#546c38",
+      "detail": "#816b21",
+      "extras": [
+        "toxic"
+      ]
+    },
+    "infested": {
+      "clothes": "#434853",
+      "detail": "#8a3171",
+      "extras": [
+        "fungus",
+        "blood"
+      ]
+    },
+    "fleshy": {
+      "clothes": "#544041",
+      "detail": "#a1283e",
+      "extras": [
+        "flesh",
+        "blood"
+      ]
+    }
+  }
+}

@@ -1,0 +1,105 @@
+{
+  "id": "runner",
+  "name": "Runner",
+  "look": "runner",
+  "shape": "triangle",
+  "color": "#b5c68a",
+  "clothes": "#8a4a3a",
+  "detail": "#a3242b",
+  "size": 0.26,
+  "health": 22,
+  "speed": 2.5,
+  "reward": 7,
+  "score": 12,
+  "damage": 1,
+  "scaling": {
+    "speed": 0.008,
+    "armor": 0.002
+  },
+  "variants": {
+    "muddy": {
+      "clothes": "#78533a",
+      "detail": "#8a2821",
+      "extras": [
+        "mud"
+      ]
+    },
+    "mossy": {
+      "clothes": "#675c3a",
+      "detail": "#94282a",
+      "extras": [
+        "moss"
+      ],
+      "outfit": "cap",
+      "gear": "#6a7a3a"
+    },
+    "dusty": {
+      "clothes": "#936d4c",
+      "detail": "#943121",
+      "extras": [
+        "dust"
+      ],
+      "outfit": "cap",
+      "gear": "#c8aa6a"
+    },
+    "leafy": {
+      "clothes": "#8a5331",
+      "detail": "#942821",
+      "extras": [
+        "leaves"
+      ]
+    },
+    "sooty": {
+      "clothes": "#5e433e",
+      "detail": "#a63621",
+      "extras": [
+        "soot"
+      ]
+    },
+    "snowy": {
+      "clothes": "#81727b",
+      "detail": "#94313e",
+      "extras": [
+        "snow"
+      ]
+    },
+    "frozen": {
+      "clothes": "#78757f",
+      "detail": "#77617b",
+      "extras": [
+        "frost",
+        "snow"
+      ]
+    },
+    "bloody": {
+      "clothes": "#704a3d",
+      "detail": "#b82629",
+      "extras": [
+        "blood"
+      ]
+    },
+    "toxic": {
+      "clothes": "#786431",
+      "detail": "#816b21",
+      "extras": [
+        "toxic"
+      ]
+    },
+    "infested": {
+      "clothes": "#67414c",
+      "detail": "#8a3171",
+      "extras": [
+        "fungus",
+        "blood"
+      ]
+    },
+    "fleshy": {
+      "clothes": "#78383a",
+      "detail": "#a1283e",
+      "extras": [
+        "flesh",
+        "blood"
+      ]
+    }
+  }
+}

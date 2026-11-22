@@ -1,0 +1,97 @@
+{
+  "id": "walker",
+  "name": "Walker",
+  "look": "walker",
+  "shape": "circle",
+  "color": "#9bb07a",
+  "clothes": "#566a82",
+  "detail": "#a3242b",
+  "size": 0.3,
+  "health": 36,
+  "speed": 1,
+  "reward": 6,
+  "score": 10,
+  "damage": 1,
+  "variants": {
+    "muddy": {
+      "clothes": "#61615a",
+      "detail": "#8a2821",
+      "extras": [
+        "mud"
+      ]
+    },
+    "mossy": {
+      "clothes": "#4f6a5a",
+      "detail": "#94282a",
+      "extras": [
+        "moss"
+      ]
+    },
+    "dusty": {
+      "clothes": "#7b7c6c",
+      "detail": "#943121",
+      "extras": [
+        "dust"
+      ]
+    },
+    "leafy": {
+      "clothes": "#736152",
+      "detail": "#942821",
+      "extras": [
+        "leaves"
+      ]
+    },
+    "sooty": {
+      "clothes": "#47515f",
+      "detail": "#a63621",
+      "extras": [
+        "soot"
+      ]
+    },
+    "snowy": {
+      "clothes": "#6a819b",
+      "detail": "#94313e",
+      "extras": [
+        "snow"
+      ]
+    },
+    "frozen": {
+      "clothes": "#6183a0",
+      "detail": "#77617b",
+      "extras": [
+        "frost",
+        "snow"
+      ]
+    },
+    "bloody": {
+      "clothes": "#58585e",
+      "detail": "#b82629",
+      "extras": [
+        "blood"
+      ]
+    },
+    "toxic": {
+      "clothes": "#617352",
+      "detail": "#816b21",
+      "extras": [
+        "toxic"
+      ]
+    },
+    "infested": {
+      "clothes": "#4f506c",
+      "detail": "#8a3171",
+      "extras": [
+        "fungus",
+        "blood"
+      ]
+    },
+    "fleshy": {
+      "clothes": "#61475a",
+      "detail": "#a1283e",
+      "extras": [
+        "flesh",
+        "blood"
+      ]
+    }
+  }
+}

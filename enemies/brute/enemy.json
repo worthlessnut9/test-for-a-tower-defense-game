@@ -1,0 +1,115 @@
+{
+  "id": "brute",
+  "name": "Brute",
+  "look": "brute",
+  "shape": "square",
+  "color": "#a08470",
+  "clothes": "#4a4036",
+  "detail": "#7a1c1c",
+  "size": 0.38,
+  "health": 420,
+  "speed": 0.55,
+  "armor": 0.1,
+  "reward": 24,
+  "score": 30,
+  "damage": 3,
+  "scaling": {
+    "health": 0.13,
+    "speed": 0.002,
+    "armor": 0.003
+  },
+  "variants": {
+    "muddy": {
+      "clothes": "#5c4e38",
+      "detail": "#7a241b",
+      "extras": [
+        "mud",
+        "blood"
+      ],
+      "gear": "#684d29"
+    },
+    "mossy": {
+      "clothes": "#4a5738",
+      "detail": "#842424",
+      "extras": [
+        "moss"
+      ],
+      "gear": "#5a6831"
+    },
+    "dusty": {
+      "clothes": "#76694a",
+      "detail": "#842e1b",
+      "extras": [
+        "dust"
+      ],
+      "gear": "#aa915a"
+    },
+    "leafy": {
+      "clothes": "#6d4e2f",
+      "detail": "#84241b",
+      "extras": [
+        "leaves"
+      ],
+      "gear": "#9c4418"
+    },
+    "sooty": {
+      "clothes": "#413e3d",
+      "detail": "#96331b",
+      "extras": [
+        "soot",
+        "blood"
+      ],
+      "gear": "#b8881b"
+    },
+    "snowy": {
+      "clothes": "#646e79",
+      "detail": "#842e38",
+      "extras": [
+        "snow"
+      ],
+      "gear": "#5e758f"
+    },
+    "frozen": {
+      "clothes": "#5c707e",
+      "detail": "#675e75",
+      "extras": [
+        "frost",
+        "snow"
+      ],
+      "gear": "#87aabe"
+    },
+    "bloody": {
+      "clothes": "#53463c",
+      "detail": "#a82323",
+      "extras": [
+        "blood"
+      ],
+      "gear": "#434d3a"
+    },
+    "toxic": {
+      "clothes": "#5c602f",
+      "detail": "#70681b",
+      "extras": [
+        "toxic",
+        "blood"
+      ],
+      "gear": "#aab631"
+    },
+    "infested": {
+      "clothes": "#4a3d4a",
+      "detail": "#7a2e6b",
+      "extras": [
+        "fungus",
+        "blood"
+      ]
+    },
+    "fleshy": {
+      "clothes": "#5c3438",
+      "detail": "#912438",
+      "extras": [
+        "flesh",
+        "blood"
+      ]
+    }
+  }
+}

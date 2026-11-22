@@ -1,0 +1,108 @@
+{
+  "id": "screamer",
+  "name": "Screamer",
+  "look": "screamer",
+  "shape": "diamond",
+  "color": "#c0b8a0",
+  "clothes": "#6a3a4a",
+  "detail": "#b83a3a",
+  "size": 0.3,
+  "health": 110,
+  "speed": 1.4,
+  "reward": 14,
+  "score": 25,
+  "damage": 2,
+  "scream": {
+    "interval": 5,
+    "range": 2.5,
+    "duration": 2
+  },
+  "variants": {
+    "muddy": {
+      "clothes": "#6a4c41",
+      "detail": "#933027",
+      "extras": [
+        "mud"
+      ]
+    },
+    "mossy": {
+      "clothes": "#585441",
+      "detail": "#9c3030",
+      "extras": [
+        "moss"
+      ]
+    },
+    "dusty": {
+      "clothes": "#846653",
+      "detail": "#9c3a27",
+      "extras": [
+        "dust"
+      ]
+    },
+    "leafy": {
+      "clothes": "#7c4c38",
+      "detail": "#9c3027",
+      "extras": [
+        "leaves"
+      ]
+    },
+    "sooty": {
+      "clothes": "#503c46",
+      "detail": "#ae3f27",
+      "extras": [
+        "soot"
+      ]
+    },
+    "snowy": {
+      "clothes": "#736b82",
+      "detail": "#9c3a44",
+      "extras": [
+        "snow"
+      ],
+      "outfit": "cap",
+      "gear": "#7a93b0"
+    },
+    "frozen": {
+      "clothes": "#6a6e87",
+      "detail": "#806a81",
+      "extras": [
+        "frost",
+        "snow"
+      ],
+      "outfit": "cap",
+      "gear": "#6a98b8"
+    },
+    "bloody": {
+      "clothes": "#614345",
+      "detail": "#c02f2f",
+      "extras": [
+        "blood"
+      ]
+    },
+    "toxic": {
+      "clothes": "#6a5d38",
+      "detail": "#897427",
+      "extras": [
+        "toxic"
+      ],
+      "outfit": "cap",
+      "gear": "#6a7a2a"
+    },
+    "infested": {
+      "clothes": "#583a53",
+      "detail": "#933a77",
+      "extras": [
+        "fungus",
+        "blood"
+      ]
+    },
+    "fleshy": {
+      "clothes": "#6a3141",
+      "detail": "#aa3044",
+      "extras": [
+        "flesh",
+        "blood"
+      ]
+    }
+  }
+}

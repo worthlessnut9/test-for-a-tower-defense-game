@@ -1,0 +1,101 @@
+{
+  "id": "crawler",
+  "name": "Crawler",
+  "look": "crawler",
+  "shape": "circle",
+  "color": "#a8a46a",
+  "clothes": "#5a5a4a",
+  "detail": "#8f1c1c",
+  "size": 0.2,
+  "health": 12,
+  "speed": 0.6,
+  "reward": 3,
+  "score": 5,
+  "damage": 1,
+  "scaling": {
+    "health": 0.08,
+    "armor": 0,
+    "speed": 0.004
+  },
+  "variants": {
+    "muddy": {
+      "clothes": "#635a41",
+      "detail": "#82241b",
+      "extras": [
+        "mud"
+      ]
+    },
+    "mossy": {
+      "clothes": "#516341",
+      "detail": "#8c2424",
+      "extras": [
+        "moss"
+      ]
+    },
+    "dusty": {
+      "clothes": "#7d7453",
+      "detail": "#8c2e1b",
+      "extras": [
+        "dust"
+      ]
+    },
+    "leafy": {
+      "clothes": "#745a38",
+      "detail": "#8c241b",
+      "extras": [
+        "leaves"
+      ]
+    },
+    "sooty": {
+      "clothes": "#484a46",
+      "detail": "#9e331b",
+      "extras": [
+        "soot"
+      ]
+    },
+    "snowy": {
+      "clothes": "#6c7982",
+      "detail": "#8c2e38",
+      "extras": [
+        "snow"
+      ]
+    },
+    "frozen": {
+      "clothes": "#637c87",
+      "detail": "#6f5e75",
+      "extras": [
+        "frost"
+      ]
+    },
+    "bloody": {
+      "clothes": "#5a5145",
+      "detail": "#b02323",
+      "extras": [
+        "blood"
+      ]
+    },
+    "toxic": {
+      "clothes": "#636c38",
+      "detail": "#79681b",
+      "extras": [
+        "toxic"
+      ]
+    },
+    "infested": {
+      "clothes": "#514853",
+      "detail": "#822e6b",
+      "extras": [
+        "fungus",
+        "blood"
+      ]
+    },
+    "fleshy": {
+      "clothes": "#634041",
+      "detail": "#992438",
+      "extras": [
+        "flesh",
+        "blood"
+      ]
+    }
+  }
+}

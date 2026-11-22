@@ -1,0 +1,112 @@
+{
+  "id": "armored-walker",
+  "name": "Armored Walker",
+  "look": "armored",
+  "shape": "square",
+  "color": "#8fa07a",
+  "clothes": "#6a7078",
+  "detail": "#a3242b",
+  "size": 0.32,
+  "health": 240,
+  "speed": 1.4,
+  "armor": 0.45,
+  "reward": 16,
+  "score": 22,
+  "damage": 2,
+  "scaling": {
+    "armor": 0.006
+  },
+  "variants": {
+    "muddy": {
+      "clothes": "#6a6456",
+      "detail": "#8a2821",
+      "extras": [
+        "mud"
+      ],
+      "outfit": ""
+    },
+    "mossy": {
+      "clothes": "#586d56",
+      "detail": "#94282a",
+      "extras": [
+        "moss"
+      ],
+      "outfit": ""
+    },
+    "dusty": {
+      "clothes": "#847e68",
+      "detail": "#943121",
+      "extras": [
+        "dust"
+      ],
+      "outfit": ""
+    },
+    "leafy": {
+      "clothes": "#7c644d",
+      "detail": "#942821",
+      "extras": [
+        "leaves"
+      ],
+      "outfit": ""
+    },
+    "sooty": {
+      "clothes": "#50545a",
+      "detail": "#a63621",
+      "extras": [
+        "soot"
+      ],
+      "outfit": ""
+    },
+    "snowy": {
+      "clothes": "#738397",
+      "detail": "#94313e",
+      "extras": [
+        "snow"
+      ],
+      "outfit": ""
+    },
+    "frozen": {
+      "clothes": "#6a869b",
+      "detail": "#77617b",
+      "extras": [
+        "frost",
+        "snow"
+      ],
+      "outfit": ""
+    },
+    "bloody": {
+      "clothes": "#615b59",
+      "detail": "#b82629",
+      "extras": [
+        "blood"
+      ],
+      "outfit": ""
+    },
+    "toxic": {
+      "clothes": "#6a764d",
+      "detail": "#816b21",
+      "extras": [
+        "toxic"
+      ],
+      "outfit": ""
+    },
+    "infested": {
+      "clothes": "#585268",
+      "detail": "#8a3171",
+      "extras": [
+        "fungus",
+        "blood"
+      ],
+      "outfit": ""
+    },
+    "fleshy": {
+      "clothes": "#6a4a56",
+      "detail": "#a1283e",
+      "extras": [
+        "flesh",
+        "blood"
+      ],
+      "outfit": ""
+    }
+  }
+}

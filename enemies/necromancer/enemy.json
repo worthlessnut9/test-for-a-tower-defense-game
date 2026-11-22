@@ -1,0 +1,125 @@
+{
+  "id": "necromancer",
+  "name": "Necromancer",
+  "look": "necromancer",
+  "shape": "hexagon",
+  "color": "#8fa8a0",
+  "clothes": "#2e2a44",
+  "detail": "#7a5ad0",
+  "size": 0.34,
+  "health": 360,
+  "speed": 0.8,
+  "reward": 36,
+  "score": 55,
+  "damage": 4,
+  "ward": {
+    "range": 2.5
+  },
+  "summon": {
+    "interval": 8,
+    "max": 6,
+    "enemies": [
+      {
+        "enemy": "walker",
+        "count": 2
+      },
+      {
+        "enemy": "crawler",
+        "count": 2
+      }
+    ]
+  },
+  "variants": {
+    "muddy": {
+      "clothes": "#4f443f",
+      "detail": "#c89a5a",
+      "extras": [
+        "mud"
+      ],
+      "outfit": ""
+    },
+    "mossy": {
+      "clothes": "#3d4d3f",
+      "detail": "#7ae05a",
+      "extras": [
+        "moss"
+      ],
+      "outfit": ""
+    },
+    "dusty": {
+      "clothes": "#695f50",
+      "detail": "#e0c070",
+      "extras": [
+        "dust"
+      ],
+      "outfit": ""
+    },
+    "leafy": {
+      "clothes": "#614436",
+      "detail": "#ffb03a",
+      "extras": [
+        "leaves"
+      ],
+      "outfit": ""
+    },
+    "sooty": {
+      "clothes": "#353443",
+      "detail": "#ff7a1a",
+      "extras": [
+        "soot"
+      ],
+      "outfit": ""
+    },
+    "snowy": {
+      "clothes": "#58647f",
+      "detail": "#bfe6ff",
+      "extras": [
+        "snow"
+      ],
+      "outfit": ""
+    },
+    "frozen": {
+      "clothes": "#4f6784",
+      "detail": "#7ad8ff",
+      "extras": [
+        "frost",
+        "snow"
+      ],
+      "outfit": ""
+    },
+    "bloody": {
+      "clothes": "#463c42",
+      "detail": "#ff3a3a",
+      "extras": [
+        "blood"
+      ],
+      "outfit": ""
+    },
+    "toxic": {
+      "clothes": "#4f5636",
+      "detail": "#9be32a",
+      "extras": [
+        "toxic"
+      ],
+      "outfit": ""
+    },
+    "infested": {
+      "clothes": "#3d3350",
+      "detail": "#4af0d0",
+      "extras": [
+        "fungus",
+        "blood"
+      ],
+      "outfit": ""
+    },
+    "fleshy": {
+      "clothes": "#4f2a3f",
+      "detail": "#ff6a9a",
+      "extras": [
+        "flesh",
+        "blood"
+      ],
+      "outfit": ""
+    }
+  }
+}

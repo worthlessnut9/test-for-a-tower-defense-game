@@ -1,0 +1,110 @@
+{
+  "id": "hazmat",
+  "name": "Hazmat Zombie",
+  "look": "hazmat",
+  "shape": "square",
+  "color": "#d9b92b",
+  "clothes": "#bd9f1f",
+  "detail": "#d4531e",
+  "size": 0.33,
+  "health": 200,
+  "speed": 1,
+  "armor": 0.1,
+  "reward": 20,
+  "score": 32,
+  "damage": 2,
+  "statusImmune": true,
+  "variants": {
+    "muddy": {
+      "clothes": "#8f792e",
+      "detail": "#9e3a1c",
+      "extras": [
+        "mud"
+      ],
+      "outfit": ""
+    },
+    "mossy": {
+      "clothes": "#7e822e",
+      "detail": "#a83a25",
+      "extras": [
+        "moss"
+      ],
+      "outfit": ""
+    },
+    "dusty": {
+      "clothes": "#aa933f",
+      "detail": "#a8441c",
+      "extras": [
+        "dust"
+      ],
+      "outfit": ""
+    },
+    "leafy": {
+      "clothes": "#a17925",
+      "detail": "#a83a1c",
+      "extras": [
+        "leaves"
+      ],
+      "outfit": ""
+    },
+    "sooty": {
+      "clothes": "#756932",
+      "detail": "#ba491c",
+      "extras": [
+        "soot"
+      ],
+      "outfit": ""
+    },
+    "snowy": {
+      "clothes": "#98986f",
+      "detail": "#a84438",
+      "extras": [
+        "snow"
+      ],
+      "outfit": ""
+    },
+    "frozen": {
+      "clothes": "#8f9b73",
+      "detail": "#8b7476",
+      "extras": [
+        "frost",
+        "snow"
+      ],
+      "outfit": ""
+    },
+    "bloody": {
+      "clothes": "#877031",
+      "detail": "#cc3924",
+      "extras": [
+        "blood"
+      ],
+      "outfit": ""
+    },
+    "toxic": {
+      "clothes": "#8f8b25",
+      "detail": "#947e1c",
+      "extras": [
+        "toxic"
+      ],
+      "outfit": ""
+    },
+    "infested": {
+      "clothes": "#7e673f",
+      "detail": "#9e446c",
+      "extras": [
+        "fungus",
+        "blood"
+      ],
+      "outfit": ""
+    },
+    "fleshy": {
+      "clothes": "#8f5f2e",
+      "detail": "#b53a38",
+      "extras": [
+        "flesh",
+        "blood"
+      ],
+      "outfit": ""
+    }
+  }
+}

@@ -1,5 +1,5 @@
 import { Sim, TARGETING, describeTier, describeAttack, rankOf, abilityOf } from '../core/sim.js';
-import { loadSave, recordResult, recordEndless, addCoins } from '../core/save.js';
+import { loadSave, recordResult, recordEndless, addCoins, markSeen, seenIds } from '../core/save.js';
 import { storyUnlocked, availableTowers, storyCoins, endlessCoins, unlockedMap, tierPrice } from '../core/game.js';
 import { drawShape, drawTowerIcon, hex, phaserPainter } from './draw.js';
 import { drawTerrain, zoneFor, levelPathMap, tierFor } from '../core/terrain.js';
@@ -672,6 +672,7 @@ const fsOk = !!(this.scale && this.scale.fullscreen && this.scale.fullscreen.ava
         n++;
         this.handleEvents();
       }
+      this.noteSeen();
       if (this.sim.status !== 'playing' && !this.ended) this.showEnd();
     }
     this.fx = this.fx.filter((f) => (f.life -= dt) > 0);
@@ -681,6 +682,17 @@ const fsOk = !!(this.scale && this.scale.fullscreen && this.scale.fullscreen.ava
     }
     this.updateHud();
     this.drawDynamic();
+  }
+
+  /** Zombies on the field are remembered, so the Team screen can list them from then on. */
+  noteSeen() {
+    if (!this.seen) this.seen = new Set(seenIds(loadSave()));
+    let fresh = null;
+    for (const e of this.sim.enemies) {
+      const id = e.def && e.def.id;
+      if (id && !this.seen.has(id)) (fresh = fresh || []).push(id), this.seen.add(id);
+    }
+    if (fresh) markSeen(fresh);
   }
 
   /** A small number that drifts up and fades (income). */

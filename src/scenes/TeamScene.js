@@ -1,8 +1,9 @@
 // The Team screen: buy towers, buy every upgrade tier, and choose who goes into battle.
-import { loadSave, buyTower, buyTier, setTeam } from '../core/save.js';
+import { loadSave, buyTower, buyTier, setTeam, seenIds } from '../core/save.js';
 import { coinsOf, ownedIds, teamIds, towerPrice, tierPrice, unlockedTiers, tierState } from '../core/game.js';
-import { attackAt, migrateTower, describeTier, DEFAULT_RULES } from '../core/sim.js';
-import { drawTowerIcon } from './draw.js';
+import { attackAt, migrateTower, describeTier, scaleEnemy, abilityOf, deathSpawns, MAX_TIER, DEFAULT_RULES } from '../core/sim.js';
+import { resolveLook, drawZombie, ZOMBIE_SCALE } from '../core/zombie.js';
+import { drawTowerIcon, drawShape, phaserPainter, hex } from './draw.js';
 import { makeButton, addHeader } from './ui.js';
 
 const FONT = 'system-ui, sans-serif';
@@ -26,17 +27,77 @@ export function towerBlurb(def) {
   return dmg + '  ·  Range ' + r1(a.range) + '  ·  ' + hits;
 }
 
+const plural = (name, n) => (n > 1 ? name + 's' : name);
+const list = (parts) => (parts.length > 1 ? parts.slice(0, -1).join(', ') + ' and ' + parts[parts.length - 1] : parts[0] || '');
+
+/** Short tags for what makes a zombie special ("Flying", "Splits on death"...). Empty for a plain zombie. */
+export function zombieTags(def) {
+  const t = [];
+  if (def.flying) t.push('Flying');
+  if (def.armor >= 0.2) t.push('Armored');
+  if (def.regen > 0) t.push('Regenerates');
+  if (def.statusImmune) t.push('Status-immune');
+  else if (def.slowImmune) t.push('Slow-immune');
+  if (deathSpawns(def).length) t.push('Splits on death');
+  if (def.scream) t.push('Screams');
+  if (def.leap) t.push('Leaps');
+  if (def.ward) t.push('Wards others');
+  if (def.summon) t.push('Summons');
+  return t;
+}
+
+/** One-line stats for the zombie list. */
+export function zombieBlurb(def) {
+  return 'HP ' + Math.round(def.health) + '  ·  Speed ' + def.speed.toFixed(1) + '  ·  $' + Math.round(def.reward || 0);
+}
+
+/** Plain-language lines that say what a zombie does. `nameOf(id)` turns an enemy id into its name. */
+export function zombieNotes(def, nameOf = (id) => id) {
+  const n = [];
+  if (def.flying) n.push('Flies over the field. Only towers that can hit air can shoot it.');
+  if (def.armor > 0) n.push('Armor ' + Math.round(def.armor * 100) + '%: it ignores that share of every hit. Poison and burn ignore armor.');
+  if (def.regen > 0) n.push('Heals ' + r1(def.regen) + ' health every second.');
+  if (def.statusImmune) n.push('Immune to every status effect: slow, burn and poison do nothing. Only direct damage hurts it.');
+  else if (def.slowImmune) n.push('Cannot be slowed.');
+  const drops = deathSpawns(def);
+  if (drops.length) n.push('When it dies it spawns ' + list(drops.map((x) => x.count + ' ' + plural(nameOf(x.enemy), x.count))) + '.');
+  const sc = abilityOf(def, 'scream');
+  if (sc) n.push('Every ' + r1(sc.interval) + 's it screams: towers within ' + r1(sc.range) + ' tiles must shoot it for ' + r1(sc.duration) + 's.');
+  const lp = abilityOf(def, 'leap');
+  if (lp) n.push('Every ' + r1(lp.cooldown) + 's it leaps up to ' + r1(lp.range) + ' tiles ahead along the path.');
+  const wd = abilityOf(def, 'ward');
+  if (wd) n.push('Zombies within ' + r1(wd.range) + ' tiles of it cannot die.');
+  const sm = abilityOf(def, 'summon');
+  if (sm) n.push('Every ' + r1(sm.interval) + 's it calls up to ' + sm.max + ' more zombies' + (sm.enemies.length ? ' (' + list(sm.enemies.map((x) => x.count + ' ' + plural(nameOf(x.enemy), x.count))) + ' per call, no reward)' : '') + '.');
+  if (!n.length) n.push('No special ability.');
+  return n;
+}
+
+const speedWord = (v) => (v < 0.7 ? 'very slow' : v < 1 ? 'slow' : v < 1.3 ? 'average' : v < 2 ? 'fast' : 'very fast');
+
+/** True when the tower is owned and one of its next tiers can be bought with the coins at hand. */
+export function hasBuyableTier(d, save, coins, owned) {
+  if (!owned) return false;
+  return (migrateTower(d).paths || []).some((p, pi) => p.tiers.some((tier, ti) => tierState(d, pi, ti, save) === 'buy' && coins >= tierPrice(tier)));
+}
+
 export class TeamScene extends Phaser.Scene {
   constructor() {
     super('Team');
     this.selId = null;
     this.page = 0;
+    this.view = 'towers';
+    this.zsel = null;
+    this.zpage = 0;
   }
 
   init(data) {
     this.tierPick = null; // touch: the tier that was tapped once and is waiting for a second tap to buy
     if (data && data.sel) this.selId = data.sel;
     if (data && data.page) this.page = data.page;
+    this.view = (data && data.view) || 'towers'; // 'towers' or 'zombies'
+    this.zsel = (data && data.zsel) || null;
+    this.zpage = (data && data.zpage) || 0;
   }
 
   create() {
@@ -48,9 +109,22 @@ export class TeamScene extends Phaser.Scene {
     this.team = teamIds(gd.towers, save, this.game_);
     if (!this.selId || !gd.towers.some((t) => t.id === this.selId)) this.selId = this.team[0] || (gd.towers[0] && gd.towers[0].id) || null;
     this.msg = '';
-    addHeader(this, 'TEAM', { sub: 'Buy towers and their upgrades, then choose who fights.', onBack: () => this.scene.start('Home'), backLabel: 'Home', coins: this.coins });
+    const zs = this.metZombies();
+    if (!this.zsel || !zs.some((z) => z.id === this.zsel)) this.zsel = zs[0] ? zs[0].id : null;
+    addHeader(this, 'TEAM', { sub: this.view === 'zombies' ? 'The zombies you have met, and what each one does.' : 'Buy towers and their upgrades, then choose who fights.', onBack: () => this.scene.start('Home'), backLabel: 'Home', coins: this.coins });
+    const tabs = [['towers', 'Towers', 164], ['zombies', 'Zombies', 284]];
+    for (const [v, label, x] of tabs) {
+      const on = this.view === v;
+      makeButton(this, x, 20, 110, 36, label, () => { if (!on) this.scene.restart({ sel: this.selId, page: this.page, view: v, zsel: this.zsel, zpage: this.zpage }); }, { size: 15, fill: on ? 0x35507a : 0x2b3544, stroke: on ? 0xffd54f : 0x4a5a70 });
+    }
     this.layer = [];
     this.render();
+  }
+
+  /** The zombies the player has met in a level so far; the rest stay hidden. */
+  metZombies() {
+    const seen = seenIds(this.save);
+    return (this.gd.enemies || []).filter((z) => seen.includes(z.id));
   }
 
   def(id) {
@@ -58,7 +132,7 @@ export class TeamScene extends Phaser.Scene {
   }
 
   again(sel = this.selId) {
-    this.scene.restart({ sel, page: this.page });
+    this.scene.restart({ sel, page: this.page, view: this.view, zsel: this.zsel, zpage: this.zpage });
   }
 
   // ---------- actions ----------
@@ -123,6 +197,10 @@ export class TeamScene extends Phaser.Scene {
       return o;
     };
     const gd = this.gd;
+    if (this.view === 'zombies') {
+      this.renderZombies(keep);
+      return;
+    }
     const slots = this.game_.teamSlots;
 
     // team slots
@@ -148,7 +226,7 @@ export class TeamScene extends Phaser.Scene {
     else if (!this.team.length) keep(this.add.text(LX, 214, 'Empty team: levels will pick towers for you.', { fontFamily: FONT, fontSize: '14px', color: '#ffb74d' }));
 
     // tower list
-    keep(this.add.text(LX, 240, 'TOWERS   click one to see its upgrades', { fontFamily: FONT, fontSize: '13px', fontStyle: 'bold', color: '#7f90a8' }));
+    keep(this.add.text(LX, 240, 'TOWERS   click one to see its upgrades.   ★ = an upgrade you can buy now', { fontFamily: FONT, fontSize: '13px', fontStyle: 'bold', color: '#7f90a8' }));
     const pages = Math.max(1, Math.ceil(gd.towers.length / PER_PAGE));
     this.page = Math.max(0, Math.min(pages - 1, this.page));
     const CW = (LW - 10) / 2;
@@ -167,7 +245,8 @@ export class TeamScene extends Phaser.Scene {
       });
       const g = keep(this.add.graphics());
       drawTowerIcon(g, d, x + 28, y + CH / 2, 14, { alpha: have ? 1 : 0.45 });
-      keep(this.add.text(x + 54, y + 8, d.name, { fontFamily: FONT, fontSize: '17px', fontStyle: 'bold', color: have ? '#e8eef7' : '#8a98ad' }));
+      const nameT = keep(this.add.text(x + 54, y + 8, d.name, { fontFamily: FONT, fontSize: '17px', fontStyle: 'bold', color: have ? '#e8eef7' : '#8a98ad' }));
+      if (hasBuyableTier(d, this.save, this.coins, have)) keep(this.add.text(x + 54 + (nameT.width || 90) + 8, y + 7, '★', { fontFamily: FONT, fontSize: '15px', fontStyle: 'bold', color: '#ffd54f' }));
       const total = (migrateTower(d).paths || []).reduce((n, p) => n + p.tiers.length, 0);
       const got = unlockedTiers(d, this.save).reduce((n, k) => n + k, 0);
       keep(this.add.text(x + 54, y + 33, have ? (inTeam ? '✔ On team' : 'Owned') + (total ? '  ·  upgrades ' + got + '/' + total : '') : 'Not owned', { fontFamily: FONT, fontSize: '13px', color: have ? (inTeam ? '#81c784' : '#9fb0c8') : '#7f90a8' }));
@@ -182,6 +261,91 @@ export class TeamScene extends Phaser.Scene {
     }
 
     this.renderDetail(keep);
+  }
+
+  /** Draws one zombie (its designed look, else a plain coloured shape) centred on x, y with body radius R. */
+  zombieFigure(g, def, x, y, R, o = {}) {
+    const pal = resolveLook(def, null, this.gd.variantsById);
+    if (pal.look) drawZombie(phaserPainter(g), pal, x, y, R * ZOMBIE_SCALE, { angle: o.angle || 0, phase: 0.7, seed: 3, flying: !!def.flying });
+    else {
+      g.fillStyle(hex(pal.skin), 1);
+      drawShape(g, def.shape, x, y, R);
+    }
+  }
+
+  /** The zombie area: a list of every zombie in the game on the left and a card with the selected one on the right. */
+  renderZombies(keep) {
+    const zs = this.metZombies();
+    const nameOf = (id) => (zs.find((z) => z.id === id) || {}).name || 'unknown zombie'; // a zombie you have not met stays unnamed
+    keep(this.add.text(LX, 100, 'ZOMBIES   ' + zs.length + ' met so far' + (zs.length ? ', click one for details' : ''), { fontFamily: FONT, fontSize: '13px', fontStyle: 'bold', color: '#7f90a8' }));
+    if (!zs.length) {
+      keep(this.add.text(LX, 130, 'You have not met any zombies yet.\nPlay a level: each kind is added here the first time it shows up.', { fontFamily: FONT, fontSize: '16px', color: '#9fb0c8', lineSpacing: 6 }));
+      keep(this.add.rectangle(DX + DW / 2, 100 + 300, DW, 600, 0x161b23).setStrokeStyle(2, 0x2a3340));
+      return;
+    }
+    const perPage = 12;
+    const pages = Math.max(1, Math.ceil(zs.length / perPage));
+    this.zpage = Math.max(0, Math.min(pages - 1, this.zpage));
+    const CW = (LW - 10) / 2;
+    const CH = 76;
+    const figs = []; // portraits are drawn after the cards so they sit on top of them
+    zs.slice(this.zpage * perPage, this.zpage * perPage + perPage).forEach((z, i) => {
+      const x = LX + (i % 2) * (CW + 10);
+      const y = 124 + Math.floor(i / 2) * (CH + 8);
+      const sel = z.id === this.zsel;
+      const bg = keep(this.add.rectangle(x + CW / 2, y + CH / 2, CW, CH, 0x1f2733).setStrokeStyle(sel ? 3 : 2, sel ? 0xffd54f : 0x4a5a70).setInteractive({ useHandCursor: true }));
+      bg.on('pointerdown', () => {
+        this.zsel = z.id;
+        this.again();
+      });
+      figs.push([z, x + 34, y + CH / 2 + 2, Math.min(17, Math.max(11, (z.size || 0.3) * 48))]);
+      keep(this.add.text(x + 70, y + 8, z.name || z.id, { fontFamily: FONT, fontSize: '17px', fontStyle: 'bold', color: '#e8eef7' }));
+      keep(this.add.text(x + 70, y + 31, zombieBlurb(z), { fontFamily: FONT, fontSize: '13px', color: '#9fb0c8' }));
+      const tags = zombieTags(z);
+      keep(this.add.text(x + 70, y + 51, tags.length ? tags.join('  ·  ') : 'Plain zombie', { fontFamily: FONT, fontSize: '12px', color: tags.length ? '#ffb74d' : '#7f90a8', wordWrap: { width: CW - 80 }, maxLines: 1 }));
+    });
+    const g = keep(this.add.graphics());
+    for (const f of figs) this.zombieFigure(g, ...f);
+    if (pages > 1) {
+      const prev = keep(makeButton(this, LX, 676, 100, 30, '◀ Prev', () => { this.zpage--; this.again(); }, { size: 14 }));
+      const next = keep(makeButton(this, LX + 110, 676, 100, 30, 'Next ▶', () => { this.zpage++; this.again(); }, { size: 14 }));
+      prev.setEnabled(this.zpage > 0);
+      next.setEnabled(this.zpage < pages - 1);
+      keep(this.add.text(LX + 226, 683, 'Page ' + (this.zpage + 1) + ' / ' + pages, { fontFamily: FONT, fontSize: '14px', color: '#9fb0c8' }));
+    }
+
+    // the selected zombie
+    keep(this.add.rectangle(DX + DW / 2, 100 + 300, DW, 600, 0x161b23).setStrokeStyle(2, 0x2a3340));
+    const z = zs.find((q) => q.id === this.zsel);
+    if (!z) return;
+    const px = DX + 16;
+    const inner = DW - 32;
+    const dg = keep(this.add.graphics());
+    this.zombieFigure(dg, z, px + 44, 160, Math.min(40, Math.max(22, (z.size || 0.3) * 100)));
+    keep(this.add.text(px + 100, 118, z.name || z.id, { fontFamily: FONT, fontSize: '24px', fontStyle: 'bold', color: '#e8eef7' }));
+    const tags = zombieTags(z);
+    keep(this.add.text(px + 100, 150, tags.length ? tags.join('  ·  ') : 'Plain zombie', { fontFamily: FONT, fontSize: '13px', color: tags.length ? '#ffb74d' : '#9fb0c8', wordWrap: { width: inner - 100 } }));
+
+    const rows = [
+      ['Health', String(Math.round(z.health))],
+      ['Speed', z.speed.toFixed(1) + ' tiles per second (' + speedWord(z.speed) + ')'],
+      ['Armor', Math.round((z.armor || 0) * 100) + '%'],
+      ['Reward', '$' + Math.round(z.reward || 0) + ' per kill'],
+      ['Lives lost', String(z.damage == null ? 1 : z.damage) + ' if it reaches the exit'],
+    ];
+    keep(this.add.text(px, 214, 'STATS   at tier 1', { fontFamily: FONT, fontSize: '13px', fontStyle: 'bold', color: '#7f90a8' }));
+    rows.forEach(([k, v], i) => {
+      keep(this.add.text(px, 238 + i * 24, k, { fontFamily: FONT, fontSize: '15px', color: '#9fb0c8' }));
+      keep(this.add.text(px + 110, 238 + i * 24, v, { fontFamily: FONT, fontSize: '15px', fontStyle: 'bold', color: '#e8eef7' }));
+    });
+
+    keep(this.add.text(px, 370, 'WHAT IT DOES', { fontFamily: FONT, fontSize: '13px', fontStyle: 'bold', color: '#7f90a8' }));
+    const notesT = keep(this.add.text(px, 394, zombieNotes(z, nameOf).map((n) => '• ' + n).join('\n'), { fontFamily: FONT, fontSize: '14px', color: '#cfd8e6', wordWrap: { width: inner }, lineSpacing: 5 }));
+    const gy = Math.min(560, 394 + (notesT.height || 100) + 26); // the growth note sits right under the abilities
+
+    const top = scaleEnemy(z, MAX_TIER);
+    keep(this.add.text(px, gy, 'IT GROWS', { fontFamily: FONT, fontSize: '13px', fontStyle: 'bold', color: '#7f90a8' }));
+    keep(this.add.text(px, gy + 24, 'Zones make zombies tougher. By zone tier ' + MAX_TIER + ' it has ' + Math.round(top.health) + ' health, speed ' + top.speed.toFixed(2) + ', ' + Math.round(top.armor * 100) + '% armor and pays $' + top.reward + '.', { fontFamily: FONT, fontSize: '13px', color: '#9fb0c8', wordWrap: { width: inner }, lineSpacing: 3 }));
   }
 
   /** Buy (not owned) or Add / Remove (owned) button for a tower. */
@@ -228,7 +392,7 @@ export class TeamScene extends Phaser.Scene {
     const y0 = 252;
     const info = keep(this.add.text(px, y0 + most * (boxH + 6) + 14, '', { fontFamily: FONT, fontSize: '14px', color: '#cfd8e6', wordWrap: { width: inner }, lineSpacing: 4 }));
     const touch = this.registry.get('touch') === true;
-    const idle = touch ? 'Tap a tier to read what it does. Tap it again to buy it.' : 'Hover a tier to read what it does. Click the highlighted tier to buy it.';
+    const idle = touch ? 'Tap a tier to read what it does. Tap it again to buy it.' : 'Hover a tier to read what it does. Click a yellow tier to buy it.';
     let shown = idle; // what the info box returns to when the pointer leaves a tier (a tapped tier stays shown)
     info.setText(idle);
     const rules = { ...DEFAULT_RULES, ...(d.upgradeRules || {}) };
@@ -243,7 +407,7 @@ export class TeamScene extends Phaser.Scene {
         const price = tierPrice(tier);
         const afford = this.coins >= price;
         const live = have && st === 'buy';
-        const edge = st === 'owned' ? 0x66bb6a : 0xe57373; // green outline once bought, red until then
+        const edge = st === 'owned' ? 0x66bb6a : live && afford ? 0xffd54f : 0xe57373; // green once bought, yellow when you can buy it now, red until then
         const bg = keep(this.add.rectangle(x + colW / 2, y + boxH / 2, colW, boxH, this.tierPick === d.id + ':' + pi + ':' + ti ? 0x2c384a : st === 'owned' ? 0x1c2a22 : 0x1b212b).setStrokeStyle(3, edge));
         bg.setInteractive({ useHandCursor: live && afford });
         const key = d.id + ':' + pi + ':' + ti;

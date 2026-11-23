@@ -93,6 +93,22 @@ export function recordEndless(levelId, wave) {
   return prev;
 }
 
+/** Remembers zombies the player has met in a level (their ids). Returns true when something new was added. */
+export function markSeen(ids) {
+  const save = loadSave();
+  const seen = Array.isArray(save.seen) ? save.seen : [];
+  const fresh = [...new Set(ids)].filter((id) => typeof id === 'string' && !seen.includes(id));
+  if (!fresh.length) return false;
+  save.seen = seen.concat(fresh);
+  persist(save);
+  return true;
+}
+
+/** The ids of the zombies the player has met so far. */
+export function seenIds(save = loadSave()) {
+  return Array.isArray(save.seen) ? save.seen : [];
+}
+
 export function resetSave() {
   persist({ levels: {} });
 }

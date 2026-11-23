@@ -132,7 +132,7 @@ export function validateTower(t, enemiesUnused) {
 }
 
 /** Checks for the game-wide settings (data/game.json plus tower prices). Same shape as validateLevel. */
-export function validateGame(game, towers) {
+export function validateGame(game, towers, enemies) {
   const out = [];
   const err = (msg) => out.push({ level: 'error', msg });
   const warn = (msg) => out.push({ level: 'warn', msg });
@@ -142,6 +142,11 @@ export function validateGame(game, towers) {
   if (game.teamSlots < 1) err('Team slots must be at least 1.');
   else if (free.length > game.teamSlots) warn(free.length + ' towers are free but the team only has ' + game.teamSlots + ' slots, so some free towers will start on the bench.');
   if (towers.length && towers.length <= game.teamSlots) warn('There are no more towers than team slots, so the team choice does not matter yet.');
+  const ew = game.endlessWaves || [];
+  ew.forEach((w, i) => {
+    if (!w.groups.length) err('Endless wave ' + (i + 1) + ' has no enemies.');
+    if (enemies) for (const g of w.groups) if (!enemies.some((e) => e.id === g.enemy)) err('Endless wave ' + (i + 1) + ' uses an unknown enemy "' + g.enemy + '".');
+  });
   return out;
 }
 

@@ -4,5 +4,14 @@
   "repeatRewardPct": 25,
   "endlessCoinsPerWave": 5,
   "endlessHpGrowth": 0.35,
-  "endlessCountGrowth": 0.25
+  "endlessCountGrowth": 0.25,
+  "night": {
+    "tierBonus": 15,
+    "countMult": 1.5,
+    "speedMult": 1.1,
+    "startMoneyMult": 0.8,
+    "startLivesMult": 0.5,
+    "rewardMult": 2
+  },
+  "endlessWaves": []
 }

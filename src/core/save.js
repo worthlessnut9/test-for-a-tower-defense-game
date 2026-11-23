@@ -25,16 +25,18 @@ function persist(save) {
 }
 
 /** Keeps the best stars / score per level. */
-export function recordResult(levelId, { won, stars, score }) {
+export function recordResult(levelId, { won, stars, score, night }) {
   const save = loadSave();
-  const r = save.levels[levelId] || { completed: false, stars: 0, bestScore: 0, plays: 0 };
+  if (night) save.night = save.night || {}; // night runs keep their own record, apart from the day levels
+  const book = night ? save.night : save.levels;
+  const r = book[levelId] || { completed: false, stars: 0, bestScore: 0, plays: 0 };
   r.plays = (r.plays || 0) + 1;
   if (won) {
     r.completed = true;
     r.stars = Math.max(r.stars || 0, stars);
     r.bestScore = Math.max(r.bestScore || 0, score);
   }
-  save.levels[levelId] = r;
+  book[levelId] = r;
   persist(save);
   return save;
 }

@@ -1,5 +1,5 @@
 import { loadSave, resetSave } from '../core/save.js';
-import { coinsOf, storyUnlocked, ownedIds, teamIds } from '../core/game.js';
+import { coinsOf, storyUnlocked, storyDone, ownedIds, teamIds } from '../core/game.js';
 import { drawTowerIcon } from './draw.js';
 import { makeButton } from './ui.js';
 
@@ -40,7 +40,7 @@ export class HomeScene extends Phaser.Scene {
     const team = teamIds(gd.towers, save, game);
 
     const sections = [
-      { key: 'story', title: 'STORY MODE', desc: 'Fight through the levels in order.', info: levels.length ? cleared + ' of ' + levels.length + ' levels cleared   ★ ' + stars + ' / ' + levels.length * 3 : 'No levels yet', go: () => this.scene.start('Menu', { mode: 'story' }) },
+      { key: 'story', title: 'STORY MODE', desc: 'Fight through the levels in order.', info: levels.length ? cleared + ' of ' + levels.length + ' levels cleared   ★ ' + stars + ' / ' + levels.length * 3 + (storyDone(levels, save) ? '\n☾ Night mode is open' : '') : 'No levels yet', go: () => this.scene.start('Menu', { mode: 'story' }) },
       { key: 'free', title: 'FREE PLAY', desc: 'Endless waves on any level you have reached.', info: bestWave ? 'Best: wave ' + bestWave : open.length ? open.length + ' level' + (open.length === 1 ? '' : 's') + ' available' : 'Clear a level in Story Mode first', go: () => this.scene.start('Menu', { mode: 'endless' }) },
       { key: 'team', title: 'TEAM', desc: 'Buy towers and upgrades with coins, then pick who you bring into battle.', info: team.length + ' / ' + game.teamSlots + ' on the team' + (unowned ? '   ·   ' + unowned + ' tower' + (unowned === 1 ? '' : 's') + ' to buy' : ''), go: () => this.scene.start('Team') },
     ];

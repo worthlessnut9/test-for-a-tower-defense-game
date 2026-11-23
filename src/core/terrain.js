@@ -139,6 +139,20 @@ export function mixHex(a, b, t) {
   return '#' + x.map((v, i) => Math.round(v + (y[i] - v) * t).toString(16).padStart(2, '0')).join('');
 }
 
+/** A colour as it looks by moonlight: pulled toward a deep blue and darkened. Anything that is not #rrggbb passes through. */
+export function nightHex(c) {
+  return typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c) ? mixHex(mixHex(c, '#101a3c', 0.58), '#000000', 0.12) : c;
+}
+
+/** Wraps a painter so everything drawn through it comes out in night colours. */
+export function nightPainter(p) {
+  return {
+    rect: (x, y, w, h, c, a) => p.rect(x, y, w, h, nightHex(c), a),
+    circle: (x, y, r, c, a) => p.circle(x, y, r, nightHex(c), a),
+    line: (x1, y1, x2, y2, w, c, a) => p.line(x1, y1, x2, y2, w, nightHex(c), a),
+  };
+}
+
 // Stable pseudo-random number per tile so decoration doesn't flicker or move between frames.
 function tileRand(c, r, k) {
   let h = (Math.imul(c, 374761393) + Math.imul(r, 668265263) + Math.imul(k + 1, 2147483647)) | 0;

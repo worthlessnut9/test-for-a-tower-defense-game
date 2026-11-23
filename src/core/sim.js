@@ -331,6 +331,16 @@ function byId(list) {
 
 // ---------- the simulation ----------
 
+// Night mode: every map has a harder night version (the new game plus). These are the rules it applies to a level.
+export const NIGHT_DEFAULTS = {
+  tierBonus: 15, // zombies play this many zone tiers higher (health, speed, armor, reward all grow with tier)
+  countMult: 1.5, // more zombies in every group
+  speedMult: 1.1, // and they move a little faster
+  startMoneyMult: 0.8, // less money to start with
+  startLivesMult: 0.5, // and fewer lives
+  rewardMult: 2, // coins for winning
+};
+
 // Endless mode loops the level's own waves; every extra loop adds enemies and health.
 export const ENDLESS_DEFAULTS = { hpGrowth: 0.35, countGrowth: 0.25 };
 
@@ -339,6 +349,8 @@ export class Sim {
    * opts.allowed: tower ids the player may build (defaults to the level's list, or every tower)
    * opts.endless: true = waves never run out (never 'won')
    * opts.hpGrowth / opts.countGrowth: endless scaling per loop through the level's waves
+   * opts.night: the night rules (see NIGHT_DEFAULTS) to play this level as its harder night version
+   * opts.endlessWaves: one shared wave set for endless mode; when it has waves, endless runs follow it instead of the level's own
    * opts.unlocked: { towerId: [tiers unlocked on path 0, 1, 2] }. Tiers beyond that cannot be bought in the level.
    *   Leave it out and every tier is available (editor playtest, tests).
    */
@@ -348,8 +360,10 @@ export class Sim {
     this.enemyDefs = byId(enemyDefs);
     this.cols = level.cols;
     this.rows = level.rows;
-    this.money = level.startMoney ?? 100;
-    this.lives = level.startLives ?? 20;
+    const nt = opts.night ? { ...NIGHT_DEFAULTS, ...(opts.night === true ? {} : opts.night) } : null;
+    this.night = nt;
+    this.money = Math.round((level.startMoney ?? 100) * (nt ? nt.startMoneyMult : 1));
+    this.lives = Math.max(1, Math.round((level.startLives ?? 20) * (nt ? nt.startLivesMult : 1)));
     this.startLives = this.lives;
     this.score = 0;
     this.kills = 0;
@@ -365,8 +379,9 @@ export class Sim {
     this.endless = !!opts.endless;
     this.hpGrowth = opts.hpGrowth ?? ENDLESS_DEFAULTS.hpGrowth;
     this.countGrowth = opts.countGrowth ?? ENDLESS_DEFAULTS.countGrowth;
+    this.sharedWaves = this.endless && Array.isArray(opts.endlessWaves) && opts.endlessWaves.some((w) => w && (w.groups || []).length) ? opts.endlessWaves.filter((w) => w && (w.groups || []).length) : null;
     this.unlocked = opts.unlocked || null;
-    this.tier = normTier(opts.tier ?? level.tier ?? 1);
+    this.tier = Math.min(MAX_TIER, normTier(opts.tier ?? level.tier ?? 1) + (nt ? Math.max(0, Math.round(nt.tierBonus)) : 0));
 
     this.paths = {};
     this.flyPaths = {};
@@ -487,8 +502,13 @@ export class Sim {
 
   // ----- waves -----
 
+  /** The waves this run follows: the shared endless set when there is one, else the level's own. */
+  get waveList() {
+    return this.sharedWaves || this.level.waves || [];
+  }
+
   get wavesTotal() {
-    return (this.level.waves || []).length;
+    return this.waveList.length;
   }
 
   get allWavesStarted() {
@@ -497,15 +517,18 @@ export class Sim {
 
   /** The wave with index i. In endless mode waves past the end loop, with more and tougher enemies. */
   waveDef(i) {
-    const waves = this.level.waves || [];
+    const waves = this.waveList;
     if (!waves.length) return null;
-    if (i < waves.length) return { groups: waves[i].groups || [], hpMult: 1 };
+    const shared = !!this.sharedWaves;
+    const night = (groups) => (this.night && this.night.countMult !== 1 ? groups.map((g) => ({ ...g, count: Math.ceil((g.count || 0) * this.night.countMult) })) : groups);
+    if (i < waves.length) return { groups: night(waves[i].groups || []), hpMult: 1, shared };
     if (!this.endless) return null;
     const loop = Math.floor(i / waves.length);
     const base = waves[i % waves.length];
     return {
-      groups: (base.groups || []).map((g) => ({ ...g, count: Math.ceil((g.count || 0) * (1 + this.countGrowth * loop)) })),
+      groups: night((base.groups || []).map((g) => ({ ...g, count: Math.ceil((g.count || 0) * (1 + this.countGrowth * loop)) }))),
       hpMult: 1 + this.hpGrowth * loop,
+      shared,
     };
   }
 
@@ -527,12 +550,14 @@ export class Sim {
     if (this.status !== 'playing' || this.allWavesStarted) return false;
     const wave = this.waveDef(this.waveIndex);
     if (!wave) return false;
-    for (const g of wave.groups) {
-      const pathId = g.path && this.paths[g.path] ? g.path : this.pathOrder[0];
+    wave.groups.forEach((g, gi) => {
+      const own = g.path && this.paths[g.path] ? g.path : null;
       for (let i = 0; i < (g.count || 0); i++) {
+        // the shared endless set knows nothing about a level's paths: a group without one takes turns over all of them
+        const pathId = own || (wave.shared ? this.pathOrder[(gi + i) % this.pathOrder.length] : this.pathOrder[0]);
         this.spawnQueue.push({ time: this.time + (g.delay || 0) + i * (g.interval ?? 1), enemy: g.enemy, path: pathId, hpMult: wave.hpMult });
       }
-    }
+    });
     this.waveIndex++;
     this.events.push({ type: 'wave', index: this.waveIndex });
     return true;
@@ -551,7 +576,7 @@ export class Sim {
       tier: this.tier,
       hp: st.health * hpMult,
       maxHp: st.health * hpMult,
-      speed: st.speed,
+      speed: st.speed * (this.night ? this.night.speedMult : 1),
       armor: st.armor,
       reward: opts.summonedBy ? 0 : st.reward,
       score: opts.summonedBy ? 0 : st.score,

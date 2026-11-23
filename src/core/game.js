@@ -1,6 +1,6 @@
 // Game-wide rules that sit above single levels: story order, coins, owned towers and the team loadout.
 import { isUnlocked, describeMissing } from './unlock.js';
-import { migrateTower } from './sim.js';
+import { migrateTower, NIGHT_DEFAULTS } from './sim.js';
 
 export const DEFAULT_GAME = {
   teamSlots: 4, // how many towers a player brings into a level
@@ -9,6 +9,8 @@ export const DEFAULT_GAME = {
   endlessCoinsPerWave: 5,
   endlessHpGrowth: 0.35, // extra enemy health per loop through the level's waves in endless mode
   endlessCountGrowth: 0.25, // extra enemies per loop
+  night: NIGHT_DEFAULTS, // the harder night version of every map (new game plus)
+  endlessWaves: [], // one wave set every endless run follows; empty = each level loops its own waves
 };
 export const DEFAULT_LEVEL_REWARD = 50;
 
@@ -17,6 +19,41 @@ const clampNum = (v, d, lo, hi) => {
   const y = Number.isFinite(x) && v !== '' && v !== null && v !== undefined ? x : d;
   return Math.min(hi, Math.max(lo, y));
 };
+
+/** Night rules, each number kept in a sane range. */
+export function normNight(n) {
+  n = n || {};
+  const D = NIGHT_DEFAULTS;
+  return {
+    tierBonus: Math.round(clampNum(n.tierBonus, D.tierBonus, 0, 49)),
+    countMult: clampNum(n.countMult, D.countMult, 0.1, 10),
+    speedMult: clampNum(n.speedMult, D.speedMult, 0.3, 3),
+    startMoneyMult: clampNum(n.startMoneyMult, D.startMoneyMult, 0, 10),
+    startLivesMult: clampNum(n.startLivesMult, D.startLivesMult, 0.05, 10),
+    rewardMult: clampNum(n.rewardMult, D.rewardMult, 0, 100),
+  };
+}
+
+/** Waves for endless mode: [{ groups: [{ enemy, count, interval, delay, path? }] }]. Bad entries are dropped. A group with no path spreads over the level's paths. */
+export function normEndlessWaves(list) {
+  const out = [];
+  for (const w of Array.isArray(list) ? list : []) {
+    const groups = [];
+    for (const g of Array.isArray(w && w.groups) ? w.groups : []) {
+      if (!g || typeof g.enemy !== 'string' || !g.enemy) continue;
+      const o = {
+        enemy: g.enemy,
+        count: Math.round(clampNum(g.count, 1, 1, 999)),
+        interval: clampNum(g.interval, 1, 0, 600),
+        delay: clampNum(g.delay, 0, 0, 600),
+      };
+      if (typeof g.path === 'string' && g.path) o.path = g.path;
+      groups.push(o);
+    }
+    out.push({ groups });
+  }
+  return out;
+}
 
 export function normGame(g) {
   g = g || {};
@@ -27,6 +64,8 @@ export function normGame(g) {
     endlessCoinsPerWave: Math.round(clampNum(g.endlessCoinsPerWave, DEFAULT_GAME.endlessCoinsPerWave, 0, 1e6)),
     endlessHpGrowth: clampNum(g.endlessHpGrowth, DEFAULT_GAME.endlessHpGrowth, 0, 10),
     endlessCountGrowth: clampNum(g.endlessCountGrowth, DEFAULT_GAME.endlessCountGrowth, 0, 10),
+    endlessWaves: normEndlessWaves(g.endlessWaves),
+    night: normNight(g.night),
   };
 }
 
@@ -46,6 +85,28 @@ export function storyMissing(levels, i, save, names) {
   const out = [];
   if (i > 0 && !isDone(save, levels[i - 1].id)) out.push('Complete ' + levels[i - 1].name);
   if (!isUnlocked(levels[i].unlock, save)) out.push(...describeMissing(levels[i].unlock, save, names));
+  return out;
+}
+
+// ---------- night: the whole story again, every map at night and harder ----------
+
+const isNightDone = (save, id) => !!(save && save.night && save.night[id] && save.night[id].completed);
+
+/** True when every story level has been cleared (the new game plus opens). */
+export function storyDone(levels, save) {
+  return levels.length > 0 && levels.every((l) => isDone(save, l.id));
+}
+
+/** Night level i is open once the whole story is cleared and the night before it (in story order) is survived. */
+export function nightUnlocked(levels, i, save) {
+  if (!levels[i] || !storyDone(levels, save)) return false;
+  return i === 0 || isNightDone(save, levels[i - 1].id);
+}
+
+export function nightMissing(levels, i, save) {
+  const out = [];
+  if (!storyDone(levels, save)) out.push('Clear every story level first');
+  else if (i > 0 && !isNightDone(save, levels[i - 1].id)) out.push('Survive the night on ' + levels[i - 1].name);
   return out;
 }
 
@@ -83,16 +144,17 @@ export function groupByAct(levels, acts) {
 }
 
 /** Progress through a group of levels: how many are cleared, stars, and whether its first level is open. */
-export function actSummary(group, levels, save) {
+export function actSummary(group, levels, save, night = false) {
   let cleared = 0;
   let stars = 0;
   for (const { level } of group.entries) {
-    const r = save && save.levels && save.levels[level.id];
+    const r = night ? save && save.night && save.night[level.id] : save && save.levels && save.levels[level.id];
     if (r && r.completed) cleared++;
     if (r) stars += r.stars || 0;
   }
   const first = group.entries[0];
-  return { cleared, total: group.entries.length, stars, maxStars: group.entries.length * 3, open: !!first && storyUnlocked(levels, first.index, save) };
+  const open = !!first && (night ? nightUnlocked(levels, first.index, save) : storyUnlocked(levels, first.index, save));
+  return { cleared, total: group.entries.length, stars, maxStars: group.entries.length * 3, open };
 }
 
 // ---------- coins ----------
@@ -100,8 +162,8 @@ export function actSummary(group, levels, save) {
 export const coinsOf = (save, game) => (save && Number.isFinite(save.coins) ? save.coins : game.startCoins);
 
 /** Coins for winning a story level: full reward the first time, a smaller share on replays. */
-export function storyCoins(level, game, alreadyCleared) {
-  const r = Math.max(0, Math.round(level.reward ?? DEFAULT_LEVEL_REWARD));
+export function storyCoins(level, game, alreadyCleared, mult = 1) {
+  const r = Math.round(Math.max(0, Math.round(level.reward ?? DEFAULT_LEVEL_REWARD)) * mult);
   return alreadyCleared ? Math.floor((r * game.repeatRewardPct) / 100) : r;
 }
 

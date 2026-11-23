@@ -1,6 +1,6 @@
 import { loadSave } from '../core/save.js';
-import { coinsOf, storyUnlocked, storyMissing, groupByAct, actSummary } from '../core/game.js';
-import { drawTerrain, zoneFor, levelPathMap } from '../core/terrain.js';
+import { coinsOf, storyUnlocked, storyMissing, nightUnlocked, nightMissing, storyDone, groupByAct, actSummary } from '../core/game.js';
+import { drawTerrain, zoneFor, levelPathMap, nightPainter } from '../core/terrain.js';
 import { makeButton, addHeader } from './ui.js';
 import { phaserPainter } from './draw.js';
 
@@ -31,6 +31,7 @@ export class MenuScene extends Phaser.Scene {
 
   init(data) {
     this.mode = data && data.mode === 'endless' ? 'endless' : 'story';
+    this.night = this.mode === 'story' && !!(data && data.night); // the night version of the story
     this.actKey = this.mode === 'story' && data ? data.act : undefined;
     this.page = 0;
   }
@@ -40,12 +41,13 @@ export class MenuScene extends Phaser.Scene {
     const levels = this.gd.levels;
     if (this.mode === 'endless') return levels.map((level, index) => ({ level, index, open: storyUnlocked(levels, index, this.save) })).filter((e) => e.open);
     const src = this.group ? this.group.entries : levels.map((level, index) => ({ level, index }));
-    return src.map(({ level, index }) => ({ level, index, open: storyUnlocked(levels, index, this.save) }));
+    return src.map(({ level, index }) => ({ level, index, open: this.night ? nightUnlocked(levels, index, this.save) : storyUnlocked(levels, index, this.save) }));
   }
 
   create() {
     this.gd = this.registry.get('data');
     this.save = loadSave();
+    if (this.night && !storyDone(this.gd.levels, this.save)) this.night = false; // night is still locked: show the day story
     const endless = this.mode === 'endless';
     const levels = this.gd.levels;
     this.groups = endless ? [] : groupByAct(levels, this.gd.acts);
@@ -54,23 +56,27 @@ export class MenuScene extends Phaser.Scene {
     if (hasActs && this.actKey !== undefined) this.group = this.groups.find((g) => (g.act ? g.act.id : OTHER_ACT) === this.actKey) || null;
     this.view = hasActs && !this.group ? 'acts' : 'levels';
 
+    if (this.night) this.add.rectangle(640, 360, 1280, 720, 0x070d1c).setDepth(-10); // night: a darker screen
     let total = 0;
-    for (const id in this.save.levels) total += this.save.levels[id].stars || 0;
+    const book = this.night ? this.save.night || {} : this.save.levels;
+    for (const id in book) total += book[id].stars || 0;
     const max = levels.length * 3;
     const coins = coinsOf(this.save, this.gd.game);
     this.cardLayer = [];
 
+    const title = this.night ? 'NIGHT' : 'STORY MODE';
+    if (!endless && levels.length) this.dayNightToggle();
     if (this.view === 'acts') {
-      addHeader(this, 'STORY MODE', { sub: 'Choose an act      ★ ' + total + ' / ' + max, onBack: () => this.scene.start('Home'), backLabel: 'Home', coins });
+      addHeader(this, title, { sub: (this.night ? 'Every map again, after dark and harder.   ' : 'Choose an act      ') + '★ ' + total + ' / ' + max, onBack: () => this.scene.start('Home'), backLabel: 'Home', coins });
       this.renderActs();
       return;
     }
 
     const g = this.group;
     const actNo = g && g.act ? this.gd.acts.findIndex((a) => a.id === g.act.id) + 1 : 0;
-    addHeader(this, endless ? 'FREE PLAY' : g ? (actNo ? 'ACT ' + actNo : 'OTHER LEVELS') : 'STORY MODE', {
+    addHeader(this, endless ? 'FREE PLAY' : g ? (actNo ? 'ACT ' + actNo : 'OTHER LEVELS') + (this.night ? '  ☾' : '') : title, {
       sub: endless ? 'Endless waves: how far can you get?' : g ? (g.act ? g.act.name : 'Levels without an act') : 'Clear each level to open the next      ★ ' + total + ' / ' + max,
-      onBack: () => this.scene.start(g ? 'Menu' : 'Home', g ? { mode: 'story' } : undefined),
+      onBack: () => this.scene.start(g ? 'Menu' : 'Home', g ? { mode: 'story', night: this.night } : undefined),
       backLabel: g ? 'Acts' : 'Home',
       coins,
     });
@@ -94,6 +100,18 @@ export class MenuScene extends Phaser.Scene {
       this.pageText = this.add.text(640, 670, '', { fontFamily: FONT, fontSize: '16px', color: '#9fb0c8' }).setOrigin(0.5);
       this.updatePager();
     }
+  }
+
+  /** Day / Night buttons in the header. Night stays locked until every story level is cleared. */
+  dayNightToggle() {
+    const open = storyDone(this.gd.levels, this.save);
+    const go = (night) => this.scene.restart({ mode: 'story', night, act: this.actKey });
+    const day = makeButton(this, 164, 20, 110, 36, '☀ Day', () => go(false), { size: 15, fill: this.night ? 0x2b3544 : 0x35507a, stroke: this.night ? 0x4a5a70 : 0xffd54f });
+    const nb = makeButton(this, 284, 20, 110, 36, '☾ Night', () => open && go(true), { size: 15, fill: this.night ? 0x35507a : 0x2b3544, stroke: this.night ? 0xffd54f : 0x4a5a70 });
+    nb.setEnabled(open);
+    this.nightLocked = !open;
+    if (!open && !this.night) this.add.text(164, 60, 'Night opens when every story level is cleared', { fontFamily: FONT, fontSize: '12px', color: '#7f90a8' });
+    return [day, nb];
   }
 
   flip(d) {
@@ -122,7 +140,7 @@ export class MenuScene extends Phaser.Scene {
       const y = 112 + i * (h + gap);
       const x = 70;
       const w = 1140;
-      const sum = actSummary(group, levels, this.save);
+      const sum = actSummary(group, levels, this.save, this.night);
       const act = group.act;
       const color = act ? hexNum(act.color) : 0x6b7787;
       const cssColor = act ? act.color : '#9fb0c8';
@@ -133,7 +151,7 @@ export class MenuScene extends Phaser.Scene {
         bg.setInteractive({ useHandCursor: true });
         bg.on('pointerover', () => bg.setFillStyle(0x2a3646));
         bg.on('pointerout', () => bg.setFillStyle(0x1f2733));
-        bg.on('pointerdown', () => this.scene.start('Menu', { mode: 'story', act: act ? act.id : OTHER_ACT }));
+        bg.on('pointerdown', () => this.scene.start('Menu', { mode: 'story', night: this.night, act: act ? act.id : OTHER_ACT }));
       }
       const no = act ? this.gd.acts.findIndex((a) => a.id === act.id) + 1 : 0;
       this.add.text(x + 30, y + 10, no ? 'ACT ' + no : 'EXTRA', { fontFamily: FONT, fontSize: '13px', fontStyle: 'bold', color: open ? cssColor : '#5a6573' });
@@ -146,7 +164,7 @@ export class MenuScene extends Phaser.Scene {
         const names = {};
         for (const l of levels) names[l.id] = l.name;
         this.add.text(x + w - 24, y + 14, 'LOCKED', { fontFamily: FONT, fontSize: '14px', fontStyle: 'bold', color: '#ff8a80' }).setOrigin(1, 0);
-        this.add.text(x + w - 24, y + 34, storyMissing(levels, group.entries[0].index, this.save, names).join('\n'), { fontFamily: FONT, fontSize: '13px', color: '#c9a0a0', align: 'right', wordWrap: { width: 300 } }).setOrigin(1, 0);
+        this.add.text(x + w - 24, y + 34, (this.night ? nightMissing(levels, group.entries[0].index, this.save) : storyMissing(levels, group.entries[0].index, this.save, names)).join('\n'), { fontFamily: FONT, fontSize: '13px', color: '#c9a0a0', align: 'right', wordWrap: { width: 300 } }).setOrigin(1, 0);
       }
     });
   }
@@ -163,7 +181,7 @@ export class MenuScene extends Phaser.Scene {
     items.forEach((e, i) => {
       const x = startX + (i % COLS) * (CARD_W + GAP);
       const y = TOP + Math.floor(i / COLS) * (CARD_H + GAP);
-      this.card(e.level, e.index, x, y, e.open, e.open ? [] : storyMissing(this.gd.levels, e.index, this.save, names));
+      this.card(e.level, e.index, x, y, e.open, e.open ? [] : this.night ? nightMissing(this.gd.levels, e.index, this.save) : storyMissing(this.gd.levels, e.index, this.save, names));
     });
   }
 
@@ -172,13 +190,13 @@ export class MenuScene extends Phaser.Scene {
       this.cardLayer.push(o);
       return o;
     };
-    const rec = this.save.levels[level.id] || {};
+    const rec = (this.night ? this.save.night || {} : this.save.levels)[level.id] || {};
     const bg = add(this.add.rectangle(x + CARD_W / 2, y + CARD_H / 2, CARD_W, CARD_H, unlocked ? 0x1f2733 : 0x171b22).setStrokeStyle(2, unlocked ? 0x4a5a70 : 0x2a313c));
     if (unlocked) {
       bg.setInteractive({ useHandCursor: true });
       bg.on('pointerover', () => bg.setFillStyle(0x2a3646));
       bg.on('pointerout', () => bg.setFillStyle(0x1f2733));
-      bg.on('pointerdown', () => this.scene.start('Game', { levelId: level.id, mode: this.mode }));
+      bg.on('pointerdown', () => this.scene.start('Game', { levelId: level.id, mode: this.mode, night: this.night }));
     }
 
     // mini map preview
@@ -188,7 +206,7 @@ export class MenuScene extends Phaser.Scene {
     const mx = x + (CARD_W - mw) / 2;
     const my = y + 10;
     const dim = unlocked ? 1 : 0.35;
-    drawTerrain(phaserPainter(g, dim), zoneFor(level, this.gd.zonesById), level.tiles, levelPathMap(level), mx, my, s);
+    drawTerrain(this.night ? nightPainter(phaserPainter(g, dim)) : phaserPainter(g, dim), zoneFor(level, this.gd.zonesById), level.tiles, levelPathMap(level), mx, my, s);
 
     add(this.add.text(x + 12, y + 90, (index + 1) + '. ' + level.name, { fontFamily: FONT, fontSize: '17px', fontStyle: 'bold', color: unlocked ? '#e8eef7' : '#6b7787', wordWrap: { width: CARD_W - 24 }, maxLines: 2 }));
     if (unlocked) {

@@ -1,8 +1,8 @@
 import { Sim, TARGETING, describeTier, describeAttack, rankOf, abilityOf } from '../core/sim.js';
 import { loadSave, recordResult, recordEndless, addCoins, markSeen, seenIds } from '../core/save.js';
-import { storyUnlocked, availableTowers, storyCoins, endlessCoins, unlockedMap, tierPrice } from '../core/game.js';
+import { storyUnlocked, nightUnlocked, availableTowers, storyCoins, endlessCoins, unlockedMap, tierPrice } from '../core/game.js';
 import { drawShape, drawTowerIcon, hex, phaserPainter } from './draw.js';
-import { drawTerrain, zoneFor, levelPathMap, tierFor } from '../core/terrain.js';
+import { drawTerrain, zoneFor, levelPathMap, tierFor, nightPainter } from '../core/terrain.js';
 import { makeButton } from './ui.js';
 import { actKeyOf } from './MenuScene.js';
 import { resolveLook, variantFor, drawZombie, zombieAngle, zombiePhase, ZOMBIE_SCALE } from '../core/zombie.js';
@@ -32,22 +32,29 @@ export class GameScene extends Phaser.Scene {
   init(data) {
     this.levelId = data && data.levelId;
     this.mode = data && data.mode === 'endless' ? 'endless' : 'story';
+    this.night = this.mode === 'story' && !!(data && data.night); // the harder night version of a story level (only once it is unlocked)
+  }
+
+  /** What to pass to the next scene to stay in the same mode. */
+  runData(levelId = this.levelId) {
+    return { levelId, mode: this.mode, night: this.night };
   }
 
   create() {
     const gd = (this.gd = this.registry.get('data'));
     this.level = gd.levelsById[this.levelId];
     if (!this.level) {
-      this.scene.start('Menu', { mode: this.mode });
+      this.scene.start('Menu', { mode: this.mode, night: this.night });
       return;
     }
     const game = gd.game;
     const save0 = loadSave();
+    if (this.night && !nightUnlocked(gd.levels, gd.levels.findIndex((l) => l.id === this.level.id), save0)) this.night = false; // not open yet: play the day level
     const allowed = availableTowers(this.level, gd.towers, save0, game); // the player's team, narrowed by the level
     this.zone = zoneFor(this.level, gd.zonesById);
     this.variant = variantFor(this.level, this.zone); // zombie reskin for this level (its own, else its zone's)
     this.looks = {};
-    this.sim = new Sim(this.level, gd.towers, gd.enemies, { allowed, endless: this.mode === 'endless', hpGrowth: game.endlessHpGrowth, countGrowth: game.endlessCountGrowth, unlocked: unlockedMap(gd.towers, save0), tier: tierFor(this.level, this.zone) });
+    this.sim = new Sim(this.level, gd.towers, gd.enemies, { allowed, endless: this.mode === 'endless', hpGrowth: game.endlessHpGrowth, countGrowth: game.endlessCountGrowth, endlessWaves: game.endlessWaves, night: this.night ? game.night : null, unlocked: unlockedMap(gd.towers, save0), tier: tierFor(this.level, this.zone) });
     this.rank = rankOf(this.sim.tier); // shown on every zombie
     this.screamAt = {}; // screamer id -> sim time of its last scream (for the sound waves)
     this.speed = 1;
@@ -252,7 +259,7 @@ export class GameScene extends Phaser.Scene {
     const T = this.tile0;
     const L = this.level;
     // drawn at the fitted tile size with the map's corner at (0, 0); applyView() positions and scales this layer
-    drawTerrain(phaserPainter(g), this.zone, L.tiles, levelPathMap(L), 0, 0, T);
+    drawTerrain(this.night ? nightPainter(phaserPainter(g)) : phaserPainter(g), this.zone, L.tiles, levelPathMap(L), 0, 0, T);
     // spawn / exit markers
     for (const p of this.level.paths) {
       const s = p.points[0];
@@ -261,6 +268,11 @@ export class GameScene extends Phaser.Scene {
       g.strokeRect(s[0] * T + 2, s[1] * T + 2, T - 4, T - 4);
       g.lineStyle(3, 0xef5350, 1);
       g.strokeRect(e[0] * T + 2, e[1] * T + 2, T - 4, T - 4);
+    }
+    if (this.night) {
+      // moonlight: a cool wash over the ground, and a lighter patch around every spawn and exit
+      g.fillStyle(0x0a1230, 0.28);
+      g.fillRect(0, 0, L.cols * T, L.rows * T);
     }
     g.lineStyle(1, 0x000000, 0.18);
     for (let c = 0; c <= L.cols; c++) g.lineBetween(c * T, 0, c * T, L.rows * T);
@@ -302,7 +314,7 @@ export class GameScene extends Phaser.Scene {
     this.bZoomOut = makeButton(this, roundX - 8 - 50 - 4 - 36 - 4 - 36, 7, 36, 38, '−', () => this.zoomBy(0.8), zb);
     this.bZoomIn = makeButton(this, roundX - 8 - 50 - 4 - 36, 7, 36, 38, '+', () => this.zoomBy(1.25), zb);
     this.bZoomFit = makeButton(this, roundX - 8 - 50, 7, 50, 38, 'Fit', () => this.zoomFit(), { ...zb, size: 15 });
-    this.add.text((282 + roundX - 8 - 50 - 4 - 36 - 4 - 36) / 2, 26, this.level.name + (this.mode === 'endless' ? '  ∞ endless' : ''), { fontFamily: FONT, fontSize: '16px', color: '#8fb0cc' }).setOrigin(0.5).setDepth(21);
+    this.add.text((282 + roundX - 8 - 50 - 4 - 36 - 4 - 36) / 2, 26, this.level.name + (this.mode === 'endless' ? '  ∞ endless' : this.night ? '  ☾ night' : ''), { fontFamily: FONT, fontSize: '16px', color: '#8fb0cc' }).setOrigin(0.5).setDepth(21);
     this.tWave = this.add.text(roundX + 95, 26, '', { fontFamily: FONT, fontSize: '20px', fontStyle: 'bold', color: '#ffffff' }).setOrigin(0.5).setDepth(21);
     this.bMenu = makeButton(this, PX - 12 - 38, 7, 38, 38, '⚙', () => this.toggleMenu(), { size: 22, depth: 21, fill: PAL.card, hover: PAL.cardHi, stroke: PAL.trim });
     this.banner = this.add.text(PX / 2, TOP + 56, '', { fontFamily: FONT, fontSize: '46px', fontStyle: 'bold', color: '#ffffff', stroke: '#000000', strokeThickness: 7 }).setOrigin(0.5).setDepth(30).setAlpha(0);
@@ -554,7 +566,7 @@ export class GameScene extends Phaser.Scene {
 
   /** Back to the level list, on the act this level belongs to. */
   toMenu() {
-    this.scene.start('Menu', { mode: this.mode, act: this.mode === 'story' ? actKeyOf(this.gd, this.level) : undefined });
+    this.scene.start('Menu', { mode: this.mode, night: this.night, act: this.mode === 'story' ? actKeyOf(this.gd, this.level) : undefined });
   }
 
   toggleMenu() {
@@ -574,7 +586,7 @@ const fsOk = !!(this.scale && this.scale.fullscreen && this.scale.fullscreen.ava
     const title = this.add.text(W / 2, H / 2 - 112, 'PAUSED', { fontFamily: FONT, fontSize: '32px', fontStyle: 'bold', color: '#ffffff' }).setOrigin(0.5).setDepth(d + 2);
     const opt = { depth: d + 3, size: 18, fill: PAL.card, hover: PAL.cardHi, stroke: PAL.edge };
     const b1 = makeButton(this, W / 2 - 120, H / 2 - 66, 240, 50, 'Resume', () => this.closeMenu(), { ...opt, fill: 0x2e9e45, hover: 0x3fbf5a });
-    const b2 = makeButton(this, W / 2 - 120, H / 2 - 4, 240, 50, 'Restart level', () => this.scene.restart({ levelId: this.levelId, mode: this.mode }), opt);
+    const b2 = makeButton(this, W / 2 - 120, H / 2 - 4, 240, 50, 'Restart level', () => this.scene.restart(this.runData()), opt);
     const b3 = makeButton(this, W / 2 - 120, H / 2 + 58, 240, 50, 'Quit to level select', () => this.toMenu(), opt);
     this.menuObjs = [dim, panel, title, b1, b2, b3];
     if (fsOk) this.menuObjs.push(makeButton(this, W / 2 - 120, H / 2 + 120, 240, 50, this.scale.isFullscreen ? 'Exit fullscreen' : 'Fullscreen', () => { this.scale.toggleFullscreen(); this.closeMenu(); }, opt));
@@ -1090,11 +1102,12 @@ const fsOk = !!(this.scale && this.scale.fullscreen && this.scale.fullscreen.ava
       save = loadSave();
     } else {
       stars = sim.stars();
-      const prev = loadSave().levels[this.levelId] || {};
-      save = recordResult(this.levelId, { won, stars, score: sim.score });
+      const night = this.night;
+      const prev = (night ? loadSave().night || {} : loadSave().levels)[this.levelId] || {};
+      save = recordResult(this.levelId, { won, stars, score: sim.score, night });
       const newBest = won && sim.score > (prev.bestScore || 0);
-      if (won) coins = storyCoins(this.level, game, !!prev.completed);
-      title = won ? 'AREA SECURED' : 'OVERRUN';
+      if (won) coins = storyCoins(this.level, game, !!prev.completed, night ? game.night.rewardMult : 1);
+      title = won ? (night ? 'NIGHT SURVIVED' : 'AREA SECURED') : 'OVERRUN';
       lines = ['Score: ' + sim.score + (newBest ? '   (new best!)' : ''), 'Lives left: ' + sim.lives + ' / ' + sim.startLives, 'Enemies defeated: ' + sim.kills];
       if (!won) lines.push('Wave reached: ' + sim.waveIndex + ' / ' + sim.wavesTotal);
     }
@@ -1112,9 +1125,9 @@ const fsOk = !!(this.scale && this.scale.fullscreen && this.scale.fullscreen.ava
     this.add.text(W / 2, H / 2 - 20, lines.join('\n'), { fontFamily: FONT, fontSize: '18px', color: '#cfd8e6', align: 'center', lineSpacing: 6 }).setOrigin(0.5, 0).setDepth(d + 2);
 
     const next = won && !endless ? levels[idx + 1] : null;
-    const nextOk = next && storyUnlocked(levels, idx + 1, save);
-    const btns = [['Replay', () => this.scene.restart({ levelId: this.levelId, mode: this.mode })], ['Levels', () => this.toMenu()]];
-    if (nextOk) btns.push(['Next level ▶', () => this.scene.start('Game', { levelId: next.id, mode: 'story' })]);
+    const nextOk = next && (this.night ? nightUnlocked(levels, idx + 1, save) : storyUnlocked(levels, idx + 1, save));
+    const btns = [['Replay', () => this.scene.restart(this.runData())], ['Levels', () => this.toMenu()]];
+    if (nextOk) btns.push(['Next level ▶', () => this.scene.start('Game', this.runData(next.id))]);
     const bw = 140;
     const total = btns.length * bw + (btns.length - 1) * 12;
     btns.forEach(([label, fn], i) => {

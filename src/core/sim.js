@@ -641,7 +641,7 @@ export class Sim {
   }
 
   applySlow(e, factor, duration) {
-    if (!(factor < 1) || !(duration > 0) || e.def.slowImmune) return;
+    if (!(factor < 1) || !(duration > 0) || e.def.slowImmune || e.def.statusImmune) return;
     if (e.slowUntil <= this.time || factor <= e.slowFactor) {
       e.slowFactor = factor;
       e.slowUntil = Math.max(e.slowUntil, this.time + duration);
@@ -649,7 +649,7 @@ export class Sim {
   }
 
   applyBurn(e, dps, duration) {
-    if (!(dps > 0) || !(duration > 0)) return;
+    if (!(dps > 0) || !(duration > 0) || e.def.statusImmune) return; // statusImmune: slow, burn and poison all bounce off
     if (e.burnUntil <= this.time || dps >= e.burnDps) {
       e.burnDps = dps;
       e.burnUntil = Math.max(e.burnUntil, this.time + duration);
@@ -693,7 +693,7 @@ export class Sim {
 
   /** Poison: damage per second that ignores armor and keeps growing while the zombie stays poisoned. */
   applyPoison(e, s, startAt) {
-    if (e.dead || !(s.poisonDuration > 0) || !(s.poisonDps > 0 || s.poisonRamp > 0)) return;
+    if (e.dead || e.def.statusImmune || !(s.poisonDuration > 0) || !(s.poisonDps > 0 || s.poisonRamp > 0)) return;
     if (e.poisonUntil <= this.time) e.poisonStart = startAt === undefined ? this.time : startAt;
     e.poisonDps = Math.max(e.poisonDps, s.poisonDps || 0);
     e.poisonRamp = Math.max(e.poisonRamp, s.poisonRamp || 0);

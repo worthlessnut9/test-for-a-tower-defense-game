@@ -13,6 +13,8 @@ const PX = 1000; // the map lives in x 0..PX, the tower panel in PX..W
 const SBW = W - PX;
 const TOP = 52; // height of the bar across the top of the map (lives, cash, round)
 const STEP = 1 / 60;
+const ZOOM_MAX_TILE = 88; // zooming stops when a tile is about this many pixels wide
+const DRAG_PX = 10; // a press that travels further than this pans the map instead of clicking
 const FONT = 'system-ui, sans-serif';
 const r1 = (x) => Math.round(x * 10) / 10;
 const PATH_COLORS = [0xef5350, 0x42a5f5, 0x66bb6a];
@@ -57,6 +59,8 @@ export class GameScene extends Phaser.Scene {
     this.buildId = null;
     this.selected = null;
     this.hover = null;
+    this.pendingCell = null; // touch: the tile a tower is being previewed on, waiting for a second tap
+    this.sellArmed = 0; // touch: time until which the Sell button asks for a second tap
     this.hoverCard = null;
     this.tipPath = null;
     this.fx = [];
@@ -67,24 +71,30 @@ export class GameScene extends Phaser.Scene {
     this.tile = Math.floor(Math.min((PX - 24) / L.cols, (H - TOP - 12) / L.rows));
     this.ox = Math.floor((PX - this.tile * L.cols) / 2);
     this.oy = TOP + Math.floor((H - TOP - this.tile * L.rows) / 2);
+    // zoom: tile0 is the size that fits the whole map; the player can zoom in on big maps (this.tile = tile0 * zoom) and pan around
+    this.tile0 = this.tile;
+    this.zoom = 1;
+    this.zoomMax = Math.max(1.5, Math.min(4, ZOOM_MAX_TILE / this.tile0));
+    this.press = null; // a finger / mouse button that went down on the map: a click if it does not travel, a pan if it does
+    this.pinch = null;
 
     this.mapG = this.add.graphics().setDepth(0);
     this.g = this.add.graphics().setDepth(5);
     this.drawMap();
     this.buildPanel();
+    this.applyView();
 
     this.input.mouse.disableContextMenu();
-    this.input.on('pointermove', (p) => {
-      this.hover = this.cellAt(p.x, p.y);
+    this.input.on('pointermove', (p) => this.onPointerMove(p));
+    this.input.on('pointerdown', (p, over) => this.onPointerDown(p, over));
+    this.input.on('pointerup', (p) => this.onPointerUp(p));
+    this.input.on('pointerupoutside', () => {
+      this.press = null;
+      this.pinch = null;
     });
-    this.input.on('pointerdown', (p) => {
-      if (this.ended || this.menuOpen) return;
-      if (p.rightButtonDown()) {
-        this.cancel();
-        return;
-      }
-      const cell = this.cellAt(p.x, p.y);
-      if (cell) this.onCellClick(cell);
+    this.input.on('wheel', (p, over, dx, dy) => {
+      if (this.ended || this.menuOpen || !this.inMapView(p.x, p.y)) return;
+      this.zoomAt(p.x, p.y, dy < 0 ? 1.15 : 1 / 1.15);
     });
     const kb = this.input.keyboard;
     kb.on('keydown-SPACE', () => this.startWave());
@@ -98,6 +108,9 @@ export class GameScene extends Phaser.Scene {
     kb.on('keydown-E', () => this.doUpgrade(2));
     kb.on('keydown-X', () => this.doSell());
     kb.on('keydown', (e) => {
+      if (e.key === '+' || e.key === '=') return this.zoomBy(1.25);
+      if (e.key === '-' || e.key === '_') return this.zoomBy(0.8);
+      if (e.key === '0') return this.zoomFit();
       const n = parseInt(e.key, 10);
       if (n >= 1 && n <= this.sim.allowedTowers.length) this.chooseBuild(this.sim.allowedTowers[n - 1]);
     });
@@ -105,11 +118,125 @@ export class GameScene extends Phaser.Scene {
 
   // ---------- geometry ----------
 
+  /** Is this screen point on the visible map (not the top bar or the tower panel)? */
+  inMapView(x, y) {
+    return x >= 0 && x < PX && y >= TOP && y < H;
+  }
+
   cellAt(x, y) {
+    if (!this.inMapView(x, y)) return null;
     const c = Math.floor((x - this.ox) / this.tile);
     const r = Math.floor((y - this.oy) / this.tile);
-    if (x < 0 || x >= PX || c < 0 || r < 0 || c >= this.level.cols || r >= this.level.rows) return null;
+    if (c < 0 || r < 0 || c >= this.level.cols || r >= this.level.rows) return null;
     return { col: c, row: r };
+  }
+
+  // ---------- zoom and pan ----------
+
+  /** Keeps the map on screen: centred while it fits, otherwise it can be dragged until an edge shows. */
+  clampView() {
+    const L = this.level;
+    const mw = L.cols * this.tile;
+    const mh = L.rows * this.tile;
+    const vh = H - TOP;
+    const M = 12;
+    this.ox = mw <= PX - 2 * M + 0.5 ? Math.floor((PX - mw) / 2) : Math.min(M, Math.max(PX - mw - M, this.ox));
+    this.oy = mh <= vh - M + 0.5 ? TOP + Math.floor((vh - mh) / 2) : Math.min(TOP + M, Math.max(H - mh - M, this.oy));
+  }
+
+  /** Moves the drawn terrain (it is drawn once at the fitted size and scaled) and updates the zoom buttons. */
+  applyView() {
+    this.tile = this.tile0 * this.zoom;
+    this.clampView();
+    this.mapG.setPosition(this.ox, this.oy).setScale(this.zoom);
+    if (this.bZoomIn) {
+      this.bZoomIn.setEnabled(this.zoom < this.zoomMax - 0.01);
+      this.bZoomOut.setEnabled(this.zoom > 1.01);
+      this.bZoomFit.setEnabled(this.zoom > 1.01);
+    }
+  }
+
+  /** Zoom by a factor, keeping the map point under screen point (sx, sy) where it is. */
+  zoomAt(sx, sy, factor) {
+    const z = Math.max(1, Math.min(this.zoomMax, this.zoom * factor));
+    if (z === this.zoom) return;
+    const wx = (sx - this.ox) / this.tile;
+    const wy = (sy - this.oy) / this.tile;
+    this.zoom = z;
+    this.tile = this.tile0 * z;
+    this.ox = sx - wx * this.tile;
+    this.oy = sy - wy * this.tile;
+    this.applyView();
+  }
+
+  zoomBy(factor) {
+    if (this.ended || this.menuOpen) return;
+    this.zoomAt(PX / 2, (TOP + H) / 2, factor);
+  }
+
+  zoomFit() {
+    if (this.ended || this.menuOpen) return;
+    this.zoom = 1;
+    this.applyView();
+  }
+
+  panBy(dx, dy) {
+    this.ox += dx;
+    this.oy += dy;
+    this.applyView();
+  }
+
+  // ---------- pointer: tap / click, drag to pan, pinch / wheel to zoom ----------
+
+  onPointerDown(p, over) {
+    if (this.ended || this.menuOpen) return;
+    if (p.wasTouch) this.registry.set('touch', true);
+    if (p.rightButtonDown()) {
+      this.cancel();
+      return;
+    }
+    if (over && over.length) return; // a button was pressed, not the map
+    if (!this.inMapView(p.x, p.y)) return;
+    this.press = { id: p.id, x: p.x, y: p.y, lx: p.x, ly: p.y, moved: false };
+  }
+
+  onPointerMove(p) {
+    const a = this.input.pointer1;
+    const b = this.input.pointer2;
+    if (a && b && a.isDown && b.isDown) {
+      // two fingers: pinch to zoom, and the middle point drags the map
+      const d = Math.hypot(a.x - b.x, a.y - b.y) || 1;
+      const mx = (a.x + b.x) / 2;
+      const my = (a.y + b.y) / 2;
+      this.press = null;
+      if (this.pinch) {
+        this.zoomAt(mx, my, d / this.pinch.d);
+        this.panBy(mx - this.pinch.mx, my - this.pinch.my);
+      }
+      this.pinch = { d, mx, my };
+      return;
+    }
+    this.pinch = null;
+    const pr = this.press;
+    if (pr && p.isDown && p.id === pr.id) {
+      if (!pr.moved && Math.hypot(p.x - pr.x, p.y - pr.y) > DRAG_PX) pr.moved = true;
+      if (pr.moved) {
+        this.panBy(p.x - pr.lx, p.y - pr.ly);
+        pr.lx = p.x;
+        pr.ly = p.y;
+      }
+      return;
+    }
+    if (!p.wasTouch) this.hover = this.cellAt(p.x, p.y); // a dragging finger does not hover: touch previews come from taps
+  }
+
+  onPointerUp(p) {
+    const pr = this.press;
+    this.press = null;
+    if (this.pinch && !(this.input.pointer1 && this.input.pointer1.isDown && this.input.pointer2 && this.input.pointer2.isDown)) this.pinch = null;
+    if (!pr || pr.moved || this.ended || this.menuOpen || p.id !== pr.id) return;
+    const cell = this.cellAt(pr.x, pr.y);
+    if (cell) this.onCellClick(cell, !!p.wasTouch);
   }
 
   px(x) {
@@ -122,21 +249,22 @@ export class GameScene extends Phaser.Scene {
 
   drawMap() {
     const g = this.mapG;
-    const T = this.tile;
+    const T = this.tile0;
     const L = this.level;
-    drawTerrain(phaserPainter(g), this.zone, L.tiles, levelPathMap(L), this.ox, this.oy, T);
+    // drawn at the fitted tile size with the map's corner at (0, 0); applyView() positions and scales this layer
+    drawTerrain(phaserPainter(g), this.zone, L.tiles, levelPathMap(L), 0, 0, T);
     // spawn / exit markers
     for (const p of this.level.paths) {
       const s = p.points[0];
       const e = p.points[p.points.length - 1];
       g.lineStyle(3, 0x66bb6a, 1);
-      g.strokeRect(this.px(s[0]) + 2, this.py(s[1]) + 2, T - 4, T - 4);
+      g.strokeRect(s[0] * T + 2, s[1] * T + 2, T - 4, T - 4);
       g.lineStyle(3, 0xef5350, 1);
-      g.strokeRect(this.px(e[0]) + 2, this.py(e[1]) + 2, T - 4, T - 4);
+      g.strokeRect(e[0] * T + 2, e[1] * T + 2, T - 4, T - 4);
     }
     g.lineStyle(1, 0x000000, 0.18);
-    for (let c = 0; c <= L.cols; c++) g.lineBetween(this.px(c), this.py(0), this.px(c), this.py(L.rows));
-    for (let r = 0; r <= L.rows; r++) g.lineBetween(this.px(0), this.py(r), this.px(L.cols), this.py(r));
+    for (let c = 0; c <= L.cols; c++) g.lineBetween(c * T, 0, c * T, L.rows * T);
+    for (let r = 0; r <= L.rows; r++) g.lineBetween(0, r * T, L.cols * T, r * T);
   }
 
   // ---------- top bar + tower panel ----------
@@ -170,7 +298,11 @@ export class GameScene extends Phaser.Scene {
     bar.strokeCircle(154, 26, 12);
     this.add.text(154, 26, '$', { fontFamily: FONT, fontSize: '16px', fontStyle: 'bold', color: '#7a5a00' }).setOrigin(0.5).setDepth(22);
     this.tMoney = this.add.text(176, 12, '', { fontFamily: FONT, fontSize: '24px', fontStyle: 'bold', color: '#ffffff' }).setDepth(21);
-    this.add.text((282 + roundX) / 2, 26, this.level.name + (this.mode === 'endless' ? '  ∞ endless' : ''), { fontFamily: FONT, fontSize: '16px', color: '#8fb0cc' }).setOrigin(0.5).setDepth(21);
+    const zb = { size: 18, depth: 21, fill: PAL.card, hover: PAL.cardHi, stroke: PAL.trim };
+    this.bZoomOut = makeButton(this, roundX - 8 - 50 - 4 - 36 - 4 - 36, 7, 36, 38, '−', () => this.zoomBy(0.8), zb);
+    this.bZoomIn = makeButton(this, roundX - 8 - 50 - 4 - 36, 7, 36, 38, '+', () => this.zoomBy(1.25), zb);
+    this.bZoomFit = makeButton(this, roundX - 8 - 50, 7, 50, 38, 'Fit', () => this.zoomFit(), { ...zb, size: 15 });
+    this.add.text((282 + roundX - 8 - 50 - 4 - 36 - 4 - 36) / 2, 26, this.level.name + (this.mode === 'endless' ? '  ∞ endless' : ''), { fontFamily: FONT, fontSize: '16px', color: '#8fb0cc' }).setOrigin(0.5).setDepth(21);
     this.tWave = this.add.text(roundX + 95, 26, '', { fontFamily: FONT, fontSize: '20px', fontStyle: 'bold', color: '#ffffff' }).setOrigin(0.5).setDepth(21);
     this.bMenu = makeButton(this, PX - 12 - 38, 7, 38, 38, '⚙', () => this.toggleMenu(), { size: 22, depth: 21, fill: PAL.card, hover: PAL.cardHi, stroke: PAL.trim });
     this.banner = this.add.text(PX / 2, TOP + 56, '', { fontFamily: FONT, fontSize: '46px', fontStyle: 'bold', color: '#ffffff', stroke: '#000000', strokeThickness: 7 }).setOrigin(0.5).setDepth(30).setAlpha(0);
@@ -298,11 +430,11 @@ export class GameScene extends Phaser.Scene {
       this.setPathRowsVisible(false);
       if (this.buildId) {
         const def = sim.towerDefs[this.buildId];
-        this.tHint.setText('Placing ' + def.name + ' ($' + def.cost + '). Click an empty tile to build it. Right-click or Esc to cancel.');
+        this.tHint.setText(this.registry.get('touch') === true ? 'Placing ' + def.name + ' ($' + def.cost + '). Tap an empty tile to preview it, tap the same tile again to build. Tap the card again to cancel.' : 'Placing ' + def.name + ' ($' + def.cost + '). Click an empty tile to build it. Right-click or Esc to cancel.');
       } else if (!sim.allowedTowers.length) {
         this.tHint.setText('No towers are available on this level.');
       } else {
-        this.tHint.setText('Pick a tower, then click an empty tile to build it. Click a placed tower to upgrade or sell it.');
+        this.tHint.setText(this.registry.get('touch') === true ? 'Pick a tower, then tap an empty tile to build it. Tap a placed tower to upgrade or sell it.' : 'Pick a tower, then click an empty tile to build it. Click a placed tower to upgrade or sell it.');
       }
     }
   }
@@ -359,7 +491,7 @@ export class GameScene extends Phaser.Scene {
     });
     this.tTiers.setText('Upgrades ' + t.tiers.join(' - '));
     this.tTarget.setText('Target: ' + cap(t.targeting));
-    this.bSell.setLabel('Sell  +$' + this.sim.sellValue(t));
+    this.bSell.setLabel((this.sellIsArmed() ? 'Tap again to sell  +$' : 'Sell  +$') + this.sim.sellValue(t));
     this.tInfo.setText(this.statText(this.sim.stats(t)));
   }
 
@@ -396,12 +528,17 @@ export class GameScene extends Phaser.Scene {
 
   chooseBuild(id) {
     if (this.ended || !this.sim.allowedTowers.includes(id)) return;
+    this.pendingCell = null;
+    if (this.registry.get('touch') === true) this.hover = null;
     this.buildId = this.buildId === id ? null : id;
     this.selected = null;
     this.refreshInfo();
   }
 
   cancel() {
+    this.pendingCell = null;
+    if (this.registry.get('touch') === true) this.hover = null;
+    this.sellArmed = 0;
     this.buildId = null;
     this.selected = null;
     this.refreshInfo();
@@ -432,13 +569,15 @@ export class GameScene extends Phaser.Scene {
     this.paused = true;
     const d = 150;
     const dim = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.6).setDepth(d).setInteractive();
-    const panel = this.add.rectangle(W / 2, H / 2, 340, 300, PAL.panel).setStrokeStyle(3, PAL.trim).setDepth(d + 1);
+const fsOk = !!(this.scale && this.scale.fullscreen && this.scale.fullscreen.available);
+    const panel = this.add.rectangle(W / 2, H / 2 + (fsOk ? 31 : 0), 340, fsOk ? 362 : 300, PAL.panel).setStrokeStyle(3, PAL.trim).setDepth(d + 1);
     const title = this.add.text(W / 2, H / 2 - 112, 'PAUSED', { fontFamily: FONT, fontSize: '32px', fontStyle: 'bold', color: '#ffffff' }).setOrigin(0.5).setDepth(d + 2);
     const opt = { depth: d + 3, size: 18, fill: PAL.card, hover: PAL.cardHi, stroke: PAL.edge };
     const b1 = makeButton(this, W / 2 - 120, H / 2 - 66, 240, 50, 'Resume', () => this.closeMenu(), { ...opt, fill: 0x2e9e45, hover: 0x3fbf5a });
     const b2 = makeButton(this, W / 2 - 120, H / 2 - 4, 240, 50, 'Restart level', () => this.scene.restart({ levelId: this.levelId, mode: this.mode }), opt);
     const b3 = makeButton(this, W / 2 - 120, H / 2 + 58, 240, 50, 'Quit to level select', () => this.toMenu(), opt);
     this.menuObjs = [dim, panel, title, b1, b2, b3];
+    if (fsOk) this.menuObjs.push(makeButton(this, W / 2 - 120, H / 2 + 120, 240, 50, this.scale.isFullscreen ? 'Exit fullscreen' : 'Fullscreen', () => { this.scale.toggleFullscreen(); this.closeMenu(); }, opt));
   }
 
   closeMenu() {
@@ -448,14 +587,25 @@ export class GameScene extends Phaser.Scene {
     this.menuObjs = [];
   }
 
-  onCellClick({ col, row }) {
+  onCellClick({ col, row }, touch = false) {
     const sim = this.sim;
     const t = sim.towerAt(col, row);
     if (this.buildId && !t) {
+      if (touch) {
+        // a finger covers the tile, so the first tap only previews the tower and its range; tapping the same tile again builds it
+        const p = this.pendingCell;
+        if (!p || p.col !== col || p.row !== row) {
+          this.pendingCell = { col, row };
+          this.hover = { col, row };
+          return;
+        }
+        this.pendingCell = null;
+      }
       sim.buildTower(this.buildId, col, row);
       this.refreshInfo();
       return;
     }
+    this.pendingCell = null;
     this.buildId = null;
     this.selected = t;
     this.refreshInfo();
@@ -467,8 +617,20 @@ export class GameScene extends Phaser.Scene {
     this.refreshInfo();
   }
 
+  sellIsArmed() {
+    return this.sellFor === this.selected && this.sellArmed > Date.now();
+  }
+
   doSell() {
     if (this.ended || !this.selected) return;
+    if (this.registry.get('touch') === true && !this.sellIsArmed()) {
+      // on a phone selling needs a second tap within a few seconds (it cannot be undone)
+      this.sellArmed = Date.now() + 3000;
+      this.sellFor = this.selected;
+      this.updatePathRows();
+      return;
+    }
+    this.sellArmed = 0;
     this.sim.sellTower(this.selected);
     this.selected = null;
     this.refreshInfo();
@@ -523,6 +685,7 @@ export class GameScene extends Phaser.Scene {
 
   /** A small number that drifts up and fades (income). */
   floatText(x, y, text, color) {
+    if (!this.inMapView(this.px(x), this.py(y))) return; // zoomed away from it: do not draw over the top bar or the panel
     const t = this.add.text(this.px(x), this.py(y) - this.tile * 0.4, text, { fontFamily: FONT, fontSize: '16px', fontStyle: 'bold', color, stroke: '#101418', strokeThickness: 3 }).setOrigin(0.5).setDepth(40);
     if (this.tweens) this.tweens.add({ targets: t, y: t.y - 34, alpha: 0, duration: 900, onComplete: () => t.destroy() });
     else t.destroy();
@@ -703,12 +866,14 @@ export class GameScene extends Phaser.Scene {
       c.name.setAlpha(ok ? 1 : 0.6);
       c.b.setFill(this.buildId === c.id ? PAL.cardSel : ok ? PAL.card : PAL.cardOff);
     }
-    const hc = this.hoverCard && this.cards.find((c) => c.id === this.hoverCard);
+    // no hover on a phone: the tooltip stays on the card that was tapped
+    const tipId = this.hoverCard || (this.registry.get('touch') === true && this.buildId) || null;
+    const hc = tipId && this.cards.find((c) => c.id === tipId);
     this.tipBg.setVisible(!!hc);
     this.tipTx.setVisible(!!hc);
     if (hc) {
       const def = sim.towerDefs[hc.id];
-      this.tipTx.setText(def.name + '   $' + def.cost + '\n' + this.statText(sim.stats({ def, tiers: [0, 0, 0] })) + '\n\nClick, then click the map to build.');
+      this.tipTx.setText(def.name + '   $' + def.cost + '\n' + this.statText(sim.stats({ def, tiers: [0, 0, 0] })) + (this.registry.get('touch') === true ? '\n\nTap the map to preview it, tap again to build.' : '\n\nClick, then click the map to build.'));
       const w = Math.max(200, this.tipTx.width + 20);
       const h = this.tipTx.height + 16;
       const top = Math.max(TOP + 8, Math.min(hc.y, H - h - 10));

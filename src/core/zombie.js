@@ -1,7 +1,7 @@
 // Zombie looks. Everything is drawn from circles and lines through a "painter" (the same small interface the terrain uses),
 // so the game (Phaser) and the Level Workshop (canvas) draw identical zombies, and sprites can replace this later.
 //
-//   look      the body plan: crawler, walker, runner, brute, armored, king, screamer, leaper, necromancer, bird ('' = a plain shape)
+//   look      the body plan: crawler, walker, runner, brute, armored, hazmat, king, screamer, leaper, necromancer, bird ('' = a plain shape)
 //   colours   skin, clothes, detail (wounds, veins), set per enemy
 //   variant   a reskin applied on top (snowy, muddy ...): a tint plus overlays like snow or moss. A zone or a level picks one.
 //
@@ -9,7 +9,7 @@
 import { pointAt } from './sim.js';
 import { mixHex } from './terrain.js';
 
-export const LOOKS = ['crawler', 'walker', 'runner', 'brute', 'armored', 'king', 'screamer', 'leaper', 'necromancer', 'bird'];
+export const LOOKS = ['crawler', 'walker', 'runner', 'brute', 'armored', 'hazmat', 'king', 'screamer', 'leaper', 'necromancer', 'bird'];
 /** Gear a variant can put on every zombie's head (parka hood, hard hat, straw hat ...). */
 export const OUTFITS = ['hood', 'hardhat', 'brimhat', 'beanie', 'helmet', 'hazmat', 'cap', 'scarf'];
 /** Colour of the mark that shows a zombie's rank (rank 0 has none). */
@@ -144,7 +144,7 @@ function humanoid(q, pal, ph, P) {
   for (const s of [-1, 1]) {
     const fx = P.tx - 0.28 + P.stride * Math.sin(ph + (s > 0 ? 0 : Math.PI));
     q.limb(P.tx - 0.1, s * P.legY * 0.8, fx, s * P.legY, P.legW, legC);
-    q.dot(fx, s * P.legY, P.footR, shade(pal.skin, 0.35));
+    q.dot(fx, s * P.legY, P.footR, P.boot || shade(pal.skin, 0.35));
   }
   // torso and shoulders
   q.dot(P.tx, 0, P.torso, pal.cloth);
@@ -161,8 +161,8 @@ function humanoid(q, pal, ph, P) {
     const hy = s * (P.sh * 0.72) + swing * 0.12;
     q.dot(sx, sy, P.shR, pal.cloth);
     q.limb(sx, sy, ex, ey, P.armW, pal.cloth);
-    q.limb(ex, ey, hx, hy, P.armW * 0.85, pal.skin);
-    q.dot(hx, hy, P.handR, light(pal.skin, 0.06));
+    q.limb(ex, ey, hx, hy, P.armW * 0.85, P.sleeve || pal.skin);
+    q.dot(hx, hy, P.handR, P.glove || light(pal.skin, 0.06));
     if (P.claws) for (const a of [-0.35, 0, 0.35]) q.seg(hx, hy, hx + 0.32 * Math.cos(a), hy + 0.32 * Math.sin(a) + s * 0.04, 0.05, '#e8e4d4');
   }
   // head
@@ -232,6 +232,34 @@ const LOOK_DRAW = {
     q.seg(P.hx + P.hr * 0.55, -P.hr * 0.55, P.hx + P.hr * 0.55, P.hr * 0.55, 0.1, '#15181b');
     for (const s of [-1, 1]) q.dot(P.hx + P.hr * 0.55, s * P.hr * 0.25, 0.04, '#efe56a');
     return { head: [P.hx, 0, P.hr * 1.05], parts: [[P.tx, 0, P.torso], [P.sx, -P.sh, P.shR], [P.sx, P.sh, P.shR]] };
+  },
+  hazmat(q, pal, ph) {
+    // a sealed chemical suit: the enemy's colour is the suit, its detail colour the hazard trim. Gloves and boots are black rubber.
+    const suit = pal.skin;
+    const P = { ...HUMAN, torso: 0.48, sh: 0.62, shR: 0.35, sx: -0.02, tx: -0.16, armLen: 0.86, armW: 0.27, handR: 0.17, armSwing: 0.2, hx: 0.3, hr: 0.34, legY: 0.26, stride: 0.15, footR: 0.19, legW: 0.24, hair: false, sleeve: suit, glove: '#25282c', boot: '#25282c' };
+    // twin air tanks strapped to the back, drawn first so the body covers their front
+    for (const s of [-1, 1]) {
+      q.limb(P.tx - 0.46, s * 0.17, P.tx - 0.8, s * 0.17, 0.22, '#8f989f');
+      q.dot(P.tx - 0.82, s * 0.17, 0.11, '#6a7278');
+      q.seg(P.tx - 0.52, s * 0.17, P.tx - 0.68, s * 0.17, 0.05, '#dfe4e8', 0.85);
+    }
+    const A = humanoid(q, pal, ph, P);
+    // hazard stripes across the chest and a belt
+    q.seg(P.tx + 0.1, -0.44, P.tx + 0.1, 0.44, 0.09, pal.detail, 0.95);
+    q.seg(P.tx - 0.08, -0.4, P.tx - 0.08, 0.4, 0.05, shade(suit, 0.45), 0.9);
+    for (const s of [-1, 1]) q.dot(P.tx + 0.1, s * 0.46, 0.05, shade(suit, 0.4));
+    // hood, tinted visor with the eyes behind it, and a filter canister on the front
+    q.dot(P.hx - 0.02, 0, P.hr * 1.2, shade(suit, 0.28));
+    q.dot(P.hx - 0.02, 0, P.hr * 1.1, suit);
+    q.dot(P.hx + P.hr * 0.42, 0, P.hr * 0.66, '#12302e', 0.96);
+    q.dot(P.hx + P.hr * 0.34, -P.hr * 0.24, P.hr * 0.2, '#8fe8d8', 0.6);
+    for (const s of [-1, 1]) q.dot(P.hx + P.hr * 0.62, s * P.hr * 0.26, 0.05, '#efe56a');
+    q.dot(P.hx + P.hr * 1.0, P.hr * 0.12, 0.11, '#3a3d40');
+    q.dot(P.hx + P.hr * 1.0, P.hr * 0.12, 0.05, '#9aa3aa');
+    // a hose from the mask round to the tanks
+    q.seg(P.hx + P.hr * 0.9, P.hr * 0.16, P.tx + 0.1, 0.4, 0.05, '#2a2d31', 0.9);
+    q.seg(P.tx + 0.1, 0.4, P.tx - 0.62, 0.2, 0.05, '#2a2d31', 0.9);
+    return { head: [P.hx, 0, P.hr * 1.1], parts: A.parts };
   },
   king(q, pal, ph) {
     // a rat king: a knot of zombies fused together, tails and limbs tangled, with a crowned head in the middle
@@ -511,7 +539,7 @@ export function drawZombie(p, pal, cx, cy, R, o = {}) {
     A = { head: [0.2, 0, 0.4], parts: [[0, 0, 0.8]] };
   }
   A.skin = pal.skin;
-  if (pal.outfit && pal.gear && !(pal.look === 'armored' || pal.look === 'king' || pal.look === 'necromancer') && !(pal.look === 'screamer' && (pal.outfit === 'hood' || pal.outfit === 'hazmat'))) outfit(q, pal.outfit, pal.gear, A);
+  if (pal.outfit && pal.gear && !(pal.look === 'armored' || pal.look === 'hazmat' || pal.look === 'king' || pal.look === 'necromancer') && !(pal.look === 'screamer' && (pal.outfit === 'hood' || pal.outfit === 'hazmat'))) outfit(q, pal.outfit, pal.gear, A);
   if (pal.extras && pal.extras.length) {
     const rnd = rng((o.seed || 1) * 7919);
     for (const x of pal.extras) overlay(q, x, A, rnd);

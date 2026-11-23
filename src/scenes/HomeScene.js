@@ -21,6 +21,7 @@ export class HomeScene extends Phaser.Scene {
 
     this.add.text(640, 96, 'ZOMBIE DEFENSE', { fontFamily: FONT, fontSize: '58px', fontStyle: 'bold', color: '#e8eef7' }).setOrigin(0.5);
     this.add.text(640, 148, 'Hold the line.', { fontFamily: FONT, fontSize: '20px', color: '#9fb0c8' }).setOrigin(0.5);
+    if (this.scale && this.scale.fullscreen && this.scale.fullscreen.available) makeButton(this, 24, 20, 130, 36, '⛶ Fullscreen', () => this.scale.toggleFullscreen(), { size: 15 });
     this.add.text(1256, 24, '● ' + coinsOf(save, game) + ' coins', { fontFamily: FONT, fontSize: '22px', fontStyle: 'bold', color: '#ffd54f' }).setOrigin(1, 0);
 
     // numbers for the section subtitles

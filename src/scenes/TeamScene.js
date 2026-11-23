@@ -34,6 +34,7 @@ export class TeamScene extends Phaser.Scene {
   }
 
   init(data) {
+    this.tierPick = null; // touch: the tier that was tapped once and is waiting for a second tap to buy
     if (data && data.sel) this.selId = data.sel;
     if (data && data.page) this.page = data.page;
   }
@@ -87,6 +88,21 @@ export class TeamScene extends Phaser.Scene {
     const team = teamIds(this.gd.towers, loadSave(), this.game_);
     if (team.length < this.game_.teamSlots && !team.includes(d.id)) setTeam(team.concat(d.id)); // free slot: the new tower joins
     this.again(d.id);
+  }
+
+  /** A tap or click on a tier. With a finger (no hover) the first tap shows what the tier does and the second tap buys it. */
+  tapTier(d, pi, ti, touch) {
+    if (touch) {
+      this.registry.set('touch', true);
+      const key = d.id + ':' + pi + ':' + ti;
+      if (this.tierPick !== key) {
+        this.tierPick = key;
+        this.render();
+        return;
+      }
+      this.tierPick = null;
+    }
+    this.buyTierNow(d, pi, ti);
   }
 
   buyTierNow(d, pi, ti) {
@@ -211,7 +227,9 @@ export class TeamScene extends Phaser.Scene {
     const boxH = Math.max(38, Math.min(52, Math.floor(270 / Math.max(1, most)) - 6));
     const y0 = 252;
     const info = keep(this.add.text(px, y0 + most * (boxH + 6) + 14, '', { fontFamily: FONT, fontSize: '14px', color: '#cfd8e6', wordWrap: { width: inner }, lineSpacing: 4 }));
-    const idle = 'Hover a tier to read what it does. Click the highlighted tier to buy it.';
+    const touch = this.registry.get('touch') === true;
+    const idle = touch ? 'Tap a tier to read what it does. Tap it again to buy it.' : 'Hover a tier to read what it does. Click the highlighted tier to buy it.';
+    let shown = idle; // what the info box returns to when the pointer leaves a tier (a tapped tier stays shown)
     info.setText(idle);
     const rules = { ...DEFAULT_RULES, ...(d.upgradeRules || {}) };
     keep(this.add.text(px, 660, 'In battle a tower can use at most ' + rules.maxPaths + ' paths, and only one path may go past tier ' + rules.secondaryMax + '.', { fontFamily: FONT, fontSize: '12px', color: '#7f90a8', wordWrap: { width: inner } }));
@@ -226,18 +244,21 @@ export class TeamScene extends Phaser.Scene {
         const afford = this.coins >= price;
         const live = have && st === 'buy';
         const edge = st === 'owned' ? 0x66bb6a : 0xe57373; // green outline once bought, red until then
-        const bg = keep(this.add.rectangle(x + colW / 2, y + boxH / 2, colW, boxH, st === 'owned' ? 0x1c2a22 : 0x1b212b).setStrokeStyle(3, edge));
+        const bg = keep(this.add.rectangle(x + colW / 2, y + boxH / 2, colW, boxH, this.tierPick === d.id + ':' + pi + ':' + ti ? 0x2c384a : st === 'owned' ? 0x1c2a22 : 0x1b212b).setStrokeStyle(3, edge));
         bg.setInteractive({ useHandCursor: live && afford });
-        bg.on('pointerdown', () => this.buyTierNow(d, pi, ti));
-        bg.on('pointerover', () => {
+        const key = d.id + ':' + pi + ':' + ti;
+        const tierText = (tap) => {
           let note = '';
           if (st === 'owned') note = 'Bought.';
           else if (!have) note = 'Buy the tower first.';
           else if (st === 'later') note = 'Buy the earlier tiers on this path first.';
-          else note = afford ? 'Click to buy for ' + price + ' coins.' : 'Needs ' + (price - this.coins) + ' more coins.';
-          info.setText((p.name || 'Path ' + (pi + 1)) + ' · tier ' + (ti + 1) + ': ' + (tier.name || '') + '\n' + (describeTier(tier) || '(no stat change)') + '\nIn battle it costs $' + (tier.cost || 0) + '.   ' + note);
-        });
-        bg.on('pointerout', () => info.setText(idle));
+          else note = afford ? (tap ? 'Tap again to buy for ' : 'Click to buy for ') + price + ' coins.' : 'Needs ' + (price - this.coins) + ' more coins.';
+          return (p.name || 'Path ' + (pi + 1)) + ' · tier ' + (ti + 1) + ': ' + (tier.name || '') + '\n' + (describeTier(tier) || '(no stat change)') + '\nIn battle it costs $' + (tier.cost || 0) + '.   ' + note;
+        };
+        if (this.tierPick === key) { shown = tierText(true); info.setText(shown); }
+        bg.on('pointerdown', (ptr) => this.tapTier(d, pi, ti, !!(ptr && ptr.wasTouch)));
+        bg.on('pointerover', () => info.setText(tierText(false)));
+        bg.on('pointerout', () => info.setText(shown));
         const dim = !have || st === 'later';
         keep(this.add.rectangle(x + 5, y + boxH / 2, 4, boxH - 12, PATH_COLORS[pi]).setAlpha(dim ? 0.25 : 1));
         keep(this.add.text(x + 14, y + 5, tier.name || 'Tier ' + (ti + 1), { fontFamily: FONT, fontSize: '13px', fontStyle: 'bold', color: dim ? '#6f7d92' : '#e8eef7', wordWrap: { width: colW - 20 }, maxLines: 1 }));

@@ -377,6 +377,9 @@ export class Sim {
     this.events = [];
     this._id = 1;
     this.endless = !!opts.endless;
+    // A story level can set how many waves must be survived (level.waveCount): fewer than it has cuts it short, more makes its waves loop, bigger each time
+    const wc = Math.round(Number(level.waveCount));
+    this.waveGoal = !this.endless && wc > 0 && wc <= 999 ? wc : null;
     this.hpGrowth = opts.hpGrowth ?? ENDLESS_DEFAULTS.hpGrowth;
     this.countGrowth = opts.countGrowth ?? ENDLESS_DEFAULTS.countGrowth;
     this.sharedWaves = this.endless && Array.isArray(opts.endlessWaves) && opts.endlessWaves.some((w) => w && (w.groups || []).length) ? opts.endlessWaves.filter((w) => w && (w.groups || []).length) : null;
@@ -508,7 +511,7 @@ export class Sim {
   }
 
   get wavesTotal() {
-    return this.waveList.length;
+    return this.waveGoal ?? this.waveList.length;
   }
 
   get allWavesStarted() {
@@ -518,11 +521,11 @@ export class Sim {
   /** The wave with index i. In endless mode waves past the end loop, with more and tougher enemies. */
   waveDef(i) {
     const waves = this.waveList;
-    if (!waves.length) return null;
+    if (!waves.length || (this.waveGoal && i >= this.waveGoal)) return null;
     const shared = !!this.sharedWaves;
     const night = (groups) => (this.night && this.night.countMult !== 1 ? groups.map((g) => ({ ...g, count: Math.ceil((g.count || 0) * this.night.countMult) })) : groups);
     if (i < waves.length) return { groups: night(waves[i].groups || []), hpMult: 1, shared };
-    if (!this.endless) return null;
+    if (!this.endless && !(this.waveGoal && i < this.waveGoal)) return null;
     const loop = Math.floor(i / waves.length);
     const base = waves[i % waves.length];
     return {

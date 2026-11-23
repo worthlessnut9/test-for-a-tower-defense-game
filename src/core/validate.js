@@ -61,6 +61,7 @@ export function validateLevel(level, towers, enemies, levelIds = [], zones = nul
 
   const waves = level.waves || [];
   if (!waves.length) err('Add at least one wave.');
+  if (level.waveCount != null && !(Number.isInteger(level.waveCount) && level.waveCount >= 1 && level.waveCount <= 999)) err('Waves to win must be a whole number from 1 to 999 (or empty to play every wave).');
   waves.forEach((w, i) => {
     if (!(w.groups || []).length) warn('Wave ' + (i + 1) + ' has no enemies.');
     for (const g of w.groups || []) {

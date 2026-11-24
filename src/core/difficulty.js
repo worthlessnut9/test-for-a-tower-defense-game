@@ -152,5 +152,11 @@ export function levelDifficulty(level, ctx) {
   const lens = sim.pathOrder.map((id) => sim.paths[id].total);
   if (lens.length) facts.push('The path is ' + round1(Math.min(...lens)) + (lens.length > 1 ? ' to ' + round1(Math.max(...lens)) : '') + ' tiles long: a longer walk gives towers more time to shoot.');
   facts.push('You start with $' + sim.money + ' and ' + sim.startLives + ' lives, over ' + total + ' wave' + (total === 1 ? '' : 's') + '.');
-  return { score, label: band.label, color: band.color, ratio: Number.isFinite(ratio) ? Math.round(ratio * 100) / 100 : Infinity, peak: peakWave ? peakWave.n : 0, waves, facts, warnings, tier: sim.tier };
+  // a difficulty the designer typed in on the level wins over the estimate (but not for the night rating, which is always estimated)
+  const hand = Number(level.difficulty);
+  const manual = !ctx.night && Number.isFinite(hand) && hand >= 1 && hand <= DIFFICULTY_MAX;
+  const auto = score;
+  if (manual) { score = Math.round(hand * 10) / 10; }
+  const band2 = bandOf(score);
+  return { manual, auto, score, label: band2.label, color: band2.color, ratio: Number.isFinite(ratio) ? Math.round(ratio * 100) / 100 : Infinity, peak: peakWave ? peakWave.n : 0, waves, facts, warnings, tier: sim.tier };
 }

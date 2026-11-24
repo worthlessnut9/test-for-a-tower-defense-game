@@ -332,6 +332,7 @@ function byId(list) {
 // ---------- the simulation ----------
 
 // Night mode: every map has a harder night version (the new game plus). These are the rules it applies to a level.
+export const NIGHT_MIN_MONEY = 50; // the least money a night level starts with, whatever the multiplier
 export const NIGHT_DEFAULTS = {
   tierBonus: 15, // zombies play this many zone tiers higher (health, speed, armor, reward all grow with tier)
   countMult: 1.5, // more zombies in every group
@@ -363,6 +364,7 @@ export class Sim {
     const nt = opts.night ? { ...NIGHT_DEFAULTS, ...(opts.night === true ? {} : opts.night) } : null;
     this.night = nt;
     this.money = Math.round((level.startMoney ?? 100) * (nt ? nt.startMoneyMult : 1));
+    if (nt) this.money = Math.max(NIGHT_MIN_MONEY, this.money); // night never starts you with less than this
     this.lives = Math.max(1, Math.round((level.startLives ?? 20) * (nt ? nt.startLivesMult : 1)));
     this.startLives = this.lives;
     this.score = 0;

@@ -142,7 +142,8 @@ export function levelDifficulty(level, ctx) {
   const peakWave = waves.reduce((b, x) => (!b || x.ratio > b.ratio ? x : b), null);
   const lives = Math.max(1, sim.startLives);
   let ratio = peakWave ? peakWave.ratio * Math.pow(20 / lives, 0.25) : 0;
-  let score = 1 + (DIFFICULTY_MAX - 1) * (Number.isFinite(ratio) ? 1 - Math.exp(-ratio / 2) : 1);
+  // the ratio is squared, so a level whose waves are far below what you can afford stays near 1
+  let score = 1 + (DIFFICULTY_MAX - 1) * (Number.isFinite(ratio) ? 1 - Math.exp(-Math.pow(ratio / 2, 2)) : 1);
   if (!waves.length) score = 1;
   score = Math.round(Math.min(DIFFICULTY_MAX, Math.max(1, score)) * 10) / 10;
   const band = bandOf(score);
